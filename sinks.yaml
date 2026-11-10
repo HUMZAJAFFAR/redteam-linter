@@ -1,0 +1,83 @@
+# =============================================================================
+# RedTeam Linter — sink rule configuration
+# =============================================================================
+# Each entry describes one dangerous callable ("sink") the AST analyzer should
+# flag when it sees it invoked.
+#
+# Schema (only `name` is required):
+#   name                 str  Fully qualified callable, exactly as written in
+#                             the source. For a dotted call like `os.system(...)`
+#                             write `os.system`; for a bare call `eval(...)`
+#                             write `eval`. Import aliasing (`from os import
+#                             system as sh`) must be resolved by the analyzer,
+#                             not duplicated here.
+#   category             str  Taint family, e.g. RCE, DESERIALIZATION,
+#                             COMMAND_INJECTION, SQLI, SSRF. Free-form; the
+#                             reporter just displays it.
+#   requires_shell_true  bool Whether the sink only becomes exploitable when
+#                             `shell=True` is passed. false means the sink is
+#                             dangerous on its own.
+#
+# Optional extra keys (severity, cwe, remediation, description...) are carried
+# through untouched by config_loader.load_sink_config(), so you can annotate a
+# rule without touching Python code.
+#
+# HOW TO ADD A NEW EXPLOIT PATTERN
+# 1. Copy an existing block and change `name` to the new callable.
+# 2. Pick the closest `category`, or invent a new one.
+# 3. Set `requires_shell_true: true` only if the sink needs a shell to be
+#    exploitable; otherwise false.
+# 4. Keep the file valid YAML: two-space indents, no tabs, one `-` per rule.
+# 5. If the file becomes unreadable or invalid, the linter falls back to its
+#    built-in rule set instead of failing the scan — so validate before you
+#    ship it (python -c "import yaml;yaml.safe_load(open('sinks.yaml'))").
+#
+# The list below mirrors the seed table in analyzer.py. Treat it as the
+# production baseline and extend it for your target codebase.
+# =============================================================================
+
+sinks:
+  # --- Dynamic code execution -----------------------------------------------
+  - name: "eval"
+    category: "RCE"
+    requires_shell_true: false
+    description: "Evaluates arbitrary Python expressions from user input."
+
+  - name: "exec"
+    category: "RCE"
+    requires_shell_true: false
+    description: "Executes arbitrary Python statements from user input."
+
+  - name: "compile"
+    category: "RCE"
+    requires_shell_true: false
+    description: "Compiles source strings; dangerous when paired with exec/eval."
+
+  # --- OS command execution --------------------------------------------------
+  - name: "os.system"
+    category: "RCE"
+    requires_shell_true: true
+    description: "Always runs through the system shell."
+
+  - name: "os.popen"
+    category: "RCE"
+    requires_shell_true: true
+    description: "Pipes a shell command and returns a file object."
+
+  - name: "subprocess.call"
+    category: "RCE"
+    requires_shell_true: true
+    description: "Safe with a list and shell=False; flagged when shell=True."
+
+  # --- Insecure deserialization ---------------------------------------------
+  - name: "pickle.loads"
+    category: "DESERIALIZATION"
+    requires_shell_true: false
+    description: "Arbitrary code execution via crafted pickle payloads."
+
+  # --- Example: add your own pattern here ------------------------------------
+  # - name: "yaml.load"
+  #   category: "DESERIALIZATION"
+  #   requires_shell_true: false
+  #   severity: "HIGH"
+  #   description: "Use yaml.safe_load instead."

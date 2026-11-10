@@ -1,0 +1,12 @@
+# Local virtualenv used to run the web console
+.venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Local scan artifacts
+redteam-report.json
+
+# Generated scan artifacts downloaded during testing
+artifacts/

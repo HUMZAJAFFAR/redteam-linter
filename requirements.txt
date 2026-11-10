@@ -1,0 +1,9 @@
+# RedTeam Linter — runtime dependencies (Python 3.9+)
+# Everything else (ast, re, json, pathlib, logging, argparse) is stdlib.
+
+rich>=13.7.0,<15.0.0    # terminal tables, panels, color-coded severity output
+PyYAML>=6.0.1,<7.0.0    # sinks.yaml rule loading
+
+# Web console (optional — only needed for `python -m uvicorn webapp.server:app`).
+fastapi>=0.110.0,<1.0.0
+uvicorn>=0.27.0,<1.0.0
