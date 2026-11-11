@@ -50,6 +50,7 @@ SINK_CONFIG_PATH = PROJECT_ROOT / "sinks.yaml"
 MAX_FILES = 25
 MAX_TOTAL_BYTES = 2 * 1024 * 1024
 STATIC_DIR = BASE_DIR / "static"
+VERSION = "0.2.0"
 
 app = FastAPI(title="RedTeam Linter", docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -156,6 +157,7 @@ def health() -> Dict[str, Any]:
     """Liveness probe used by the UI status pill."""
     return {
         "status": "ok",
+        "version": VERSION,
         "rules": len(RULES),
         "rule_source": RULE_SOURCE,
         "engine": "embedded-ast",

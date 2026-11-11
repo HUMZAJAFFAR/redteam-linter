@@ -1,0 +1,18 @@
+{
+  "name": "RedTeam Linter — Offensive SAST for Python",
+  "short_name": "RedTeam",
+  "description": "AST sink detection, secret harvesting and a triaged, redacted report for Python source.",
+  "start_url": "/#/home",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#07080b",
+  "theme_color": "#07080b",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

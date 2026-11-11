@@ -26,10 +26,13 @@ const STORE_TRIAGE = 'redteam.triage.v1';
 const STORE_NOTIF = 'redteam.notif.v1';
 
 const VIEW_META = {
+  home: { title: 'RedTeam Linter', subtitle: 'Offensive static analysis for Python — AST sink detection with server-side redaction.' },
   scan: { title: 'Scan', subtitle: 'Paste code or drop Python files, then run the linter.' },
   findings: { title: 'Findings', subtitle: 'Filter, group and triage the redacted report.' },
   rules: { title: 'Rules', subtitle: 'The sink table the analyzer is currently running.' },
-  assistant: { title: 'Assistant', subtitle: 'Ask about a finding, a sink or how the tool behaves.' }
+  docs: { title: 'Docs', subtitle: 'Install, usage, rules, the API, the security model and troubleshooting.' },
+  assistant: { title: 'Assistant', subtitle: 'Ask about a finding, a sink or how the tool behaves.' },
+  notfound: { title: 'Not found', subtitle: 'That section does not exist — pick one from the sidebar.' }
 };
 
 const SAMPLE_FALLBACK = [
@@ -241,7 +244,7 @@ function toast(message, kind = 'info') {
 /* ------------------------------- navigation ------------------------------- */
 
 function showView(name, options = {}) {
-  const view = VIEW_META[name] ? name : 'scan';
+  const view = VIEW_META[name] ? name : 'notfound';
   state.view = view;
 
   $$('.nav-item').forEach((item) => {
@@ -278,6 +281,12 @@ async function loadHealth() {
     pill.classList.remove('is-bad');
     $('#engine-text').textContent = state.health.engine + ' · ' + state.health.rules + ' rules';
     $('#rule-source').textContent = state.health.rule_source || '';
+    const footer = $('#footer-version');
+    if (footer) {
+      footer.textContent = 'v' + (state.health.version || '0.2.0') + ' · ' + state.health.rules + ' rules';
+    }
+    const heroRules = $('#hero-rules');
+    if (heroRules) heroRules.textContent = String(state.health.rules);
   } catch {
     const pill = $('#engine-pill');
     pill.classList.add('is-bad');
@@ -899,6 +908,27 @@ function closeDetail() {
   renderFindings();
 }
 
+/* ------------------------------ focus trap ------------------------------- */
+
+function trapFocus(container) {
+  if (!container) return;
+  const selector = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+  container.addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab') return;
+    const items = $$(selector, container).filter((node) => node.offsetParent !== null);
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+}
+
 /* -------------------------------- assistant ------------------------------ */
 
 function addMessage(role, text, meta) {
@@ -1058,7 +1088,8 @@ function bindEvents() {
 
   window.addEventListener('hashchange', () => {
     const requested = location.hash.replace('#/', '');
-    if (VIEW_META[requested] && requested !== state.view) showView(requested, { hash: false });
+    const next = VIEW_META[requested] ? requested : 'notfound';
+    if (next !== state.view) showView(next, { hash: false });
   });
 
   // input tabs
@@ -1191,6 +1222,21 @@ function bindEvents() {
   });
   $('#notif-mark-read').addEventListener('click', markAllRead);
   $('#notif-clear').addEventListener('click', clearNotifications);
+  // Any element can navigate: hero buttons, footer links, empty-state actions.
+  document.addEventListener('click', (event) => {
+    const goto = event.target.closest('[data-goto]');
+    if (goto) {
+      showView(goto.dataset.goto);
+      return;
+    }
+    const docLink = event.target.closest('[data-doc]');
+    if (docLink) {
+      const target = document.getElementById('doc-' + docLink.dataset.doc);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      $$('.doc-btn').forEach((button) => button.classList.toggle('is-active', button === docLink));
+    }
+  });
+
   document.addEventListener('click', (event) => {
     const panel = $('#notif-panel');
     if (panel.hidden) return;
@@ -1262,9 +1308,9 @@ function bindEvents() {
       renderAll();
       return;
     }
-    if (event.altKey && ['1', '2', '3', '4'].includes(event.key)) {
+    if (event.altKey && ['1', '2', '3', '4', '5', '6'].includes(event.key)) {
       event.preventDefault();
-      showView(['scan', 'findings', 'rules', 'assistant'][Number(event.key) - 1]);
+      showView(['home', 'scan', 'findings', 'rules', 'docs', 'assistant'][Number(event.key) - 1]);
     }
   });
 }
@@ -1273,6 +1319,7 @@ function bindEvents() {
 
 async function boot() {
   bindEvents();
+  trapFocus($('#detail'));
   updateCodeStats();
   renderNotifications();
   renderChat();
@@ -1287,7 +1334,7 @@ async function boot() {
   }
 
   const requested = location.hash.replace('#/', '');
-  showView(VIEW_META[requested] ? requested : 'scan', { hash: false });
+  showView(VIEW_META[requested] ? requested : 'home', { hash: false });
 
   await Promise.all([loadHealth(), loadRules(), loadAssistantStatus()]);
 }

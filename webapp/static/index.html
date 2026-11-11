@@ -7,10 +7,27 @@
 <meta name="description" content="Scan Python source for weaponizable sinks and hardcoded credentials. Secrets are redacted before they leave the server.">
 <meta name="color-scheme" content="dark">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b0d12'/%3E%3Cpath d='M16 6l8 3v7c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V9l8-3z' fill='none' stroke='%23ff4d6a' stroke-width='2'/%3E%3Ccircle cx='16' cy='15' r='2.4' fill='%23ff4d6a'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="/styles.css?v=3">
+<meta name="theme-color" content="#07080b">
+<meta property="og:type" content="website">
+<meta property="og:title" content="RedTeam Linter — Offensive SAST for Python">
+<meta property="og:description" content="AST sink detection, secret harvesting and a triaged, redacted report for Python source.">
+<meta property="og:url" content="https://github.com/HUMZAJAFFAR/redteam-linter">
+<meta property="og:image" content="/img/console.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="RedTeam Linter — Offensive SAST for Python">
+<meta name="twitter:description" content="Find the weaponizable calls before someone else does.">
+<meta name="twitter:image" content="/img/console.png">
+<link rel="canonical" href="https://github.com/HUMZAJAFFAR/redteam-linter">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/favicon.svg">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/styles.css?v=5">
 </head>
 <body>
+<a class="skip-link" href="#views">Skip to content</a>
+
 <svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.6L12 4l8 6.6V20a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 2.6v6.1c0 4.4-3 7.6-7 8.9-4-1.3-7-4.5-7-8.9V5.6L12 3z"/><circle cx="12" cy="11.4" r="2.1"/><path d="M12 13.5V17"/></symbol>
   <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 012-2h2M20 8V6a2 2 0 00-2-2h-2M4 16v2a2 2 0 002 2h2M20 16v2a2 2 0 01-2 2h-2"/><path d="M8 12h8"/></symbol>
   <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></symbol>
@@ -42,7 +59,11 @@
     </div>
 
     <nav class="nav" aria-label="Sections">
-      <button class="nav-item is-active" type="button" data-view="scan" aria-current="page">
+      <button class="nav-item is-active" type="button" data-view="home" aria-current="page">
+        <svg class="nav-icon" aria-hidden="true"><use href="#i-home"/></svg>
+        <span class="nav-label">Home</span>
+      </button>
+      <button class="nav-item" type="button" data-view="scan">
         <svg class="nav-icon" aria-hidden="true"><use href="#i-scan"/></svg>
         <span class="nav-label">Scan</span>
       </button>
@@ -54,6 +75,10 @@
       <button class="nav-item" type="button" data-view="rules">
         <svg class="nav-icon" aria-hidden="true"><use href="#i-book"/></svg>
         <span class="nav-label">Rules</span>
+      </button>
+      <button class="nav-item" type="button" data-view="docs">
+        <svg class="nav-icon" aria-hidden="true"><use href="#i-book"/></svg>
+        <span class="nav-label">Docs</span>
       </button>
       <button class="nav-item" type="button" data-view="assistant">
         <svg class="nav-icon" aria-hidden="true"><use href="#i-spark"/></svg>
@@ -87,6 +112,103 @@
     </header>
 
     <main class="views" id="views">
+      <!-- ==================== Home ==================== -->
+      <section class="view" id="view-home" aria-labelledby="view-title">
+        <div class="hero">
+          <span class="hero-eyebrow"><i class="sev-dot"></i> Offensive SAST · Python 3.9+</span>
+          <h2 class="hero-title">Find the weaponizable calls before someone else does.</h2>
+          <p class="hero-lede">RedTeam Linter parses Python with the real AST, flags dangerous sinks and hardcoded credentials, and hands you a triaged report where every secret is already masked.</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" type="button" data-goto="scan">
+              <svg class="btn-icon" aria-hidden="true"><use href="#i-scan"/></svg><span>Run a scan</span>
+            </button>
+            <button class="btn btn-ghost" type="button" data-goto="docs">
+              <svg class="btn-icon" aria-hidden="true"><use href="#i-book"/></svg><span>Read the docs</span>
+            </button>
+          </div>
+          <dl class="hero-stats">
+            <div><dt>Sink rules</dt><dd id="hero-rules">7</dd></div>
+            <div><dt>Credential patterns</dt><dd>6</dd></div>
+            <div><dt>Severity tiers</dt><dd>5</dd></div>
+            <div><dt>Secrets shipped</dt><dd>0</dd></div>
+          </dl>
+        </div>
+
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span class="feature-icon"><svg aria-hidden="true"><use href="#i-code"/></svg></span>
+            <h3>AST, not grep</h3>
+            <p>Call sites are matched in the parse tree, so comments, docstrings and string literals never produce noise.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+            <h3>Aliases resolved</h3>
+            <p><code>from os import system as sh</code> and <code>import subprocess as sp</code> still hit the same rules.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon"><svg aria-hidden="true"><use href="#i-scan"/></svg></span>
+            <h3>Shell-aware</h3>
+            <p><code>subprocess.call([...])</code> stays clean; the same call with <code>shell=True</code> is flagged high.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon"><svg aria-hidden="true"><use href="#i-lock"/></svg></span>
+            <h3>Redacted twice</h3>
+            <p>The engine masks values, then the reporter scrubs every text field again before it leaves the process.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon"><svg aria-hidden="true"><use href="#i-list"/></svg></span>
+            <h3>Triage built in</h3>
+            <p>Mark findings open, confirmed, false positive or fixed, and group them by file or by severity.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon"><svg aria-hidden="true"><use href="#i-spark"/></svg></span>
+            <h3>Contextual assistant</h3>
+            <p>Ask about any finding; it only ever sees redacted fields and answers offline without a key.</p>
+          </article>
+        </div>
+
+        <figure class="shot">
+          <img src="/img/console.png" alt="The Findings view: eleven findings across one file, every evidence cell masked, with severity filters, a triage rail and a detail sheet.">
+          <figcaption>Scanning the bundled fixture: 4 critical, 4 high, 3 medium — with every secret masked before it reaches the page.</figcaption>
+        </figure>
+
+        <div class="steps">
+          <div class="step"><span class="step-num">1</span><h3>Add a target</h3><p>Paste code or drop up to 25 Python files. Nothing is written to disk.</p></div>
+          <div class="step"><span class="step-num">2</span><h3>Scan</h3><p>Every call is checked against <code>sinks.yaml</code>; credentials are harvested in the same pass.</p></div>
+          <div class="step"><span class="step-num">3</span><h3>Triage and export</h3><p>Mark status, group the results, then download the redacted JSON report.</p></div>
+        </div>
+
+        <div class="split">
+          <article class="card">
+            <header class="card-head">
+              <div><h2 class="card-title">Run it locally</h2><p class="card-sub">Two commands, no build step.</p></div>
+            </header>
+            <pre class="code-block"><code>python3 -m venv .venv &amp;&amp; . .venv/bin/activate
+pip install -r requirements.txt
+.venv/bin/python -m uvicorn webapp.server:app --port 8000</code></pre>
+            <p class="meta-line">Then open <code>http://127.0.0.1:8000</code> and choose <strong>Load sample</strong>.</p>
+          </article>
+          <article class="card">
+            <header class="card-head">
+              <div><h2 class="card-title">What it catches</h2><p class="card-sub">Baseline rule set, extended in one YAML file.</p></div>
+            </header>
+            <ul class="facts">
+              <li><code>eval</code>, <code>exec</code>, <code>compile</code> — dynamic execution</li>
+              <li><code>os.system</code>, <code>os.popen</code>, <code>subprocess.call(shell=True)</code></li>
+              <li><code>pickle.loads</code> — insecure deserialization</li>
+              <li>AWS keys, GitHub and Slack tokens, PEM keys, JWTs, bearer tokens, generic credentials</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="security-strip">
+          <div class="security-item"><svg aria-hidden="true"><use href="#i-lock"/></svg><div><strong>Strict CSP</strong><span>No inline script or style is permitted.</span></div></div>
+          <div class="security-item"><svg aria-hidden="true"><use href="#i-lock"/></svg><div><strong>Origin guard</strong><span>Cross-site writes are rejected with 403.</span></div></div>
+          <div class="security-item"><svg aria-hidden="true"><use href="#i-lock"/></svg><div><strong>Body cap</strong><span>Oversized payloads are never buffered.</span></div></div>
+          <div class="security-item"><svg aria-hidden="true"><use href="#i-lock"/></svg><div><strong>Rate limits</strong><span>Per-route sliding windows with Retry-After.</span></div></div>
+        </div>
+      </section>
+
       <!-- ==================== Scan ==================== -->
       <section class="view is-active" id="view-scan" aria-labelledby="view-title">
         <div class="grid-2">
@@ -292,6 +414,141 @@
         </article>
       </section>
 
+      <!-- ==================== Docs ==================== -->
+      <section class="view" id="view-docs" aria-labelledby="view-title">
+        <div class="docs">
+          <nav class="docs-nav" aria-label="Documentation sections">
+            <button class="doc-btn is-active" type="button" data-doc="install">Install</button>
+            <button class="doc-btn" type="button" data-doc="usage">Usage</button>
+            <button class="doc-btn" type="button" data-doc="rules">Rules</button>
+            <button class="doc-btn" type="button" data-doc="redaction">Redaction</button>
+            <button class="doc-btn" type="button" data-doc="api">API</button>
+            <button class="doc-btn" type="button" data-doc="security">Security</button>
+            <button class="doc-btn" type="button" data-doc="trouble">Troubleshooting</button>
+          </nav>
+          <div class="docs-body">
+            <article class="doc-section" id="doc-install">
+              <h3>Install</h3>
+              <p>Requires Python 3.9 or newer. <code>rich</code> and <code>PyYAML</code> power the report and the rules; FastAPI and uvicorn are only needed for this console.</p>
+              <pre class="code-block"><code>git clone https://github.com/HUMZAJAFFAR/redteam-linter.git
+cd redteam-linter
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt</code></pre>
+            </article>
+
+            <article class="doc-section" id="doc-usage">
+              <h3>Usage</h3>
+              <p>Start the console, then paste code or drop Python files and run the scan. The CLI-equivalent path is the Python API below.</p>
+              <pre class="code-block"><code>.venv/bin/python -m uvicorn webapp.server:app --port 8000
+# then open http://127.0.0.1:8000</code></pre>
+              <h4>Python API</h4>
+              <pre class="code-block"><code>from webapp.engine import scan_files
+from reporter import ReportGenerator
+from config_loader import load_sink_config
+
+findings, scanned, _ = scan_files(
+    [{"path": "target.py", "content": source}],
+    load_sink_config("sinks.yaml"),
+)
+generator = ReportGenerator(findings, files_scanned=len(scanned))
+generator.print_report()
+generator.export_to_json("redteam-report.json")</code></pre>
+            </article>
+
+            <article class="doc-section" id="doc-rules">
+              <h3>Rules</h3>
+              <p>Sinks are declared in <code>sinks.yaml</code>. Only <code>name</code> is required; import aliases are resolved by the analyzer, so write the canonical dotted name once.</p>
+              <pre class="code-block"><code>sinks:
+  - name: "subprocess.call"
+    category: "RCE"
+    requires_shell_true: true
+    description: "Safe with a list and shell=False."</code></pre>
+              <table class="doc-table">
+                <thead><tr><th>Key</th><th>Meaning</th></tr></thead>
+                <tbody>
+                  <tr><td><code>name</code></td><td>Callable as written in source, or a bare name like <code>eval</code>.</td></tr>
+                  <tr><td><code>category</code></td><td>Free-form taint family shown in the report.</td></tr>
+                  <tr><td><code>requires_shell_true</code></td><td>Only flag the call when <code>shell=True</code> is passed.</td></tr>
+                  <tr><td><code>severity</code>, <code>description</code></td><td>Optional annotations carried through to the report.</td></tr>
+                </tbody>
+              </table>
+              <p>If the file is missing or invalid the built-in table is used instead, and the Rules view reports it as a fallback. Validate after editing with <code>python -c "import yaml; yaml.safe_load(open('sinks.yaml'))"</code>.</p>
+            </article>
+
+            <article class="doc-section" id="doc-redaction">
+              <h3>Redaction</h3>
+              <ul>
+                <li>Redaction is output-side and happens once, in <code>reporter.ReportGenerator</code>.</li>
+                <li>Evidence keeps its first four characters only: <code>AKIA***REDACTED***</code>.</li>
+                <li>Source excerpts mask the value, not the line, so <code>DB_PASSWORD = "&lt;redacted&gt;"</code> stays readable.</li>
+                <li><code>arguments_passed</code> is intentionally intact — it is the taint-analysis bridge, not credential material.</li>
+                <li>The browser, the clipboard and the exported report all receive the same redacted structure.</li>
+              </ul>
+            </article>
+
+            <article class="doc-section" id="doc-api">
+              <h3>HTTP API</h3>
+              <table class="doc-table">
+                <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+                <tbody>
+                  <tr><td>GET</td><td><code>/api/health</code></td><td>Engine, version, rule count and rule source.</td></tr>
+                  <tr><td>GET</td><td><code>/api/rules</code></td><td>Active sink rules.</td></tr>
+                  <tr><td>POST</td><td><code>/api/scan</code></td><td>Scan documents, return the redacted payload.</td></tr>
+                  <tr><td>POST</td><td><code>/api/report</code></td><td>Scan and download the redacted JSON report.</td></tr>
+                  <tr><td>GET</td><td><code>/api/assistant/status</code></td><td>Local or model mode, never the key.</td></tr>
+                  <tr><td>POST</td><td><code>/api/assistant</code></td><td>Answer a question, optionally with a finding.</td></tr>
+                </tbody>
+              </table>
+              <p>Payload: <code>{"files": [{"path": "target.py", "content": "..."}]}</code>. Limits: 25 files, 2 MB total; <code>422</code> empty, <code>413</code> oversized, <code>403</code> cross-origin, <code>429</code> rate limited.</p>
+            </article>
+
+            <article class="doc-section" id="doc-security">
+              <h3>Security</h3>
+              <ul>
+                <li>Strict CSP with no inline script or style, plus <code>nosniff</code>, no referrer and COOP/CORP.</li>
+                <li>Cross-origin state-changing requests are rejected with <code>403</code>; API responses are <code>no-store</code>.</li>
+                <li>Request bodies over 2.5 MB are rejected before buffering, including chunked uploads.</li>
+                <li>Per-client rate limits: assistant 20/min, scan 40/min, report 20/min, <code>/api</code> 120/min.</li>
+                <li>The console has no authentication — keep it bound to <code>127.0.0.1</code>.</li>
+              </ul>
+              <p>Environment knobs: <code>REDTEAM_MAX_BODY_BYTES</code>, <code>REDTEAM_FRAME_ANCESTORS</code>, and the assistant variables below.</p>
+            </article>
+
+            <article class="doc-section" id="doc-trouble">
+              <h3>Troubleshooting</h3>
+              <div class="doc-kbd-row"><span><code>413</code> Payload too large</span><span>Trim the upload below 2 MB or split the files.</span></div>
+              <div class="doc-kbd-row"><span><code>429</code> Rate limit exceeded</span><span>Wait for the window to reset; limits are per client and per route.</span></div>
+              <div class="doc-kbd-row"><span><code>403</code> Cross-origin request blocked</span><span>The Origin header did not match the host; call the API from the same origin.</span></div>
+              <div class="doc-kbd-row"><span>Assistant badge says <code>local</code></span><span>No API key is configured. Set <code>REDTEAM_AI_KEY</code>, optionally <code>REDTEAM_AI_BASE</code> and <code>REDTEAM_AI_MODEL</code>, then restart.</span></div>
+              <div class="doc-kbd-row"><span>Port already in use</span><span>Start uvicorn with a different <code>--port</code>, or stop the previous instance.</span></div>
+            </article>
+
+            <article class="doc-section">
+              <h3>Keyboard</h3>
+              <div class="doc-kbd-row"><span><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd></span><span>Run a scan</span></div>
+              <div class="doc-kbd-row"><span><kbd>Alt</kbd> + <kbd>1…6</kbd></span><span>Switch section</span></div>
+              <div class="doc-kbd-row"><span><kbd>/</kbd></span><span>Focus the findings filter</span></div>
+              <div class="doc-kbd-row"><span><kbd>t</kbd></span><span>Cycle grouping</span></div>
+              <div class="doc-kbd-row"><span><kbd>Esc</kbd></span><span>Close the detail panel, notifications or help</span></div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== Not found ==================== -->
+      <section class="view" id="view-notfound" aria-labelledby="view-title">
+        <div class="notfound">
+          <span class="state-icon"><svg aria-hidden="true"><use href="#i-alert"/></svg></span>
+          <h2>That section does not exist</h2>
+          <p>The console has five areas: an overview, a scanner, the findings report, the rule table, the docs and the assistant.</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" type="button" data-goto="scan">Run a scan</button>
+            <button class="btn btn-ghost" type="button" data-goto="home">Back home</button>
+          </div>
+        </div>
+      </section>
+
       <!-- ==================== Assistant ==================== -->
       <section class="view" id="view-assistant" aria-labelledby="view-title">
         <article class="card card-chat">
@@ -330,6 +587,25 @@
         </article>
       </section>
     </main>
+
+    <footer class="footer">
+      <div class="footer-brand">
+        <span class="rail-mark"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+        <div>
+          <strong>RedTeam<span class="accent">Linter</span></strong>
+          <span class="footer-version mono" id="footer-version">v0.2.0</span>
+        </div>
+      </div>
+      <nav class="footer-links" aria-label="Footer">
+        <button class="footer-link" type="button" data-goto="home">Home</button>
+        <button class="footer-link" type="button" data-goto="scan">Scan</button>
+        <button class="footer-link" type="button" data-goto="findings">Findings</button>
+        <button class="footer-link" type="button" data-goto="docs">Docs</button>
+        <button class="footer-link" type="button" data-goto="assistant">Assistant</button>
+        <a class="footer-link" href="https://github.com/HUMZAJAFFAR/redteam-linter" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
+      <p class="footer-note">Redaction is enforced server-side; the browser never receives a raw secret.</p>
+    </footer>
   </div>
 </div>
 
@@ -371,7 +647,7 @@
   </header>
   <dl class="help-grid">
     <div class="help-row"><dt><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd></dt><dd>Run a scan</dd></div>
-    <div class="help-row"><dt><kbd>Alt</kbd> + <kbd>1…4</kbd></dt><dd>Switch section</dd></div>
+    <div class="help-row"><dt><kbd>Alt</kbd> + <kbd>1…6</kbd></dt><dd>Switch section</dd></div>
     <div class="help-row"><dt><kbd>/</kbd></dt><dd>Focus the findings filter</dd></div>
     <div class="help-row"><dt><kbd>t</kbd></dt><dd>Cycle grouping (table · file · severity)</dd></div>
     <div class="help-row"><dt><kbd>Esc</kbd></dt><dd>Close the detail panel or notification centre</dd></div>
@@ -381,6 +657,6 @@
 <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 <noscript><p class="noscript">The console needs JavaScript. The CLI and JSON export work without it.</p></noscript>
 
-<script src="/app.js?v=3" defer></script>
+<script src="/app.js?v=5" defer></script>
 </body>
 </html>

@@ -2,13 +2,15 @@
 
 **Offensive-oriented static analysis for Python — AST sink detection, secret harvesting, a triaged browser console and a built-in assistant, with redaction enforced on the way out.**
 
-RedTeam Linter parses Python with `ast`, flags calls to dangerous sinks (`eval`, `exec`, `compile`, `os.system`, `subprocess.call(shell=True)`, `pickle.loads`, …) plus hardcoded credentials, and presents them through a severity-ranked terminal report, a deterministic JSON artifact, or a four-view web console.
+RedTeam Linter parses Python with `ast`, flags calls to dangerous sinks (`eval`, `exec`, `compile`, `os.system`, `subprocess.call(shell=True)`, `pickle.loads`, …) plus hardcoded credentials, and presents them through a severity-ranked terminal report, a deterministic JSON artifact, or a six-view web console with a landing page and in-app documentation.
 
 Every finding is redacted **before** it is printed, serialized or sent to the browser. Raw secrets and raw matched lines never reach your terminal, your JSON export, devtools, or the assistant.
 
 ![Findings view — 11 findings, masked evidence, triage rails](docs/screenshot.png)
 
 ![Finding detail — masked source excerpt with the flagged line highlighted](docs/screenshot-detail.png)
+
+![Home — product overview with quick start, feature grid and security posture](docs/screenshot-home.png)
 
 ---
 
@@ -55,13 +57,14 @@ Harvesting, analysis, reporting and presentation are separate layers, so any one
 
 **Console** (vanilla HTML/CSS/JS, no build step)
 
-- Four views — **Scan**, **Findings**, **Rules**, **Assistant** — behind a hash router.
+- Six views — **Home**, **Scan**, **Findings**, **Rules**, **Docs**, **Assistant** — behind a hash router, with a skip link, a footer and a 404 route.
 - Findings table with severity chips, status chips, free-text filter, sort control, and grouping by file or by severity.
 - Detail sheet: triage status, why it matters, masked evidence, `arguments_passed`, a redacted source excerpt with the flagged line highlighted, metadata, copy-finding, ask-assistant.
 - Triage status per finding (Open / Confirmed / False positive / Fixed), persisted in the browser.
 - Notification centre with unread badge for scans, triage changes, exports, assistant replies and failures.
 - Rule inspector showing exactly what was loaded from `sinks.yaml`.
-- Keyboard: <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd> scan, <kbd>Alt</kbd>+<kbd>1…4</kbd> switch view, <kbd>/</kbd> filter, <kbd>t</kbd> cycle grouping, <kbd>Esc</kbd> close.
+- Keyboard: <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd> scan, <kbd>Alt</kbd>+<kbd>1…6</kbd> switch view, <kbd>/</kbd> filter, <kbd>t</kbd> cycle grouping, <kbd>Esc</kbd> close.
+- Web essentials: SVG favicon and web manifest, Open Graph/Twitter meta, `robots.txt`, a print stylesheet, a skip link and focus-trapped dialogs.
 - Responsive from wide desktop down to tablet; no horizontal page scroll.
 - All rendering uses DOM APIs and `textContent` — a hostile snippet cannot become markup.
 
@@ -150,9 +153,11 @@ generator.export_to_json("redteam-report.json")   # redacted JSON artifact
 
 | View | What it does |
 | --- | --- |
+| **Home** | Product overview: what it catches, how a scan flows, the quick-start commands and the security posture. |
 | **Scan** | Paste code or drop up to 25 `.py` files (2 MB total), run the scan, see the summary tiles and timing. |
 | **Findings** | Filter by severity, triage status and free text; sort by severity/location/sink; switch between table, by-file and by-severity grouping; open any finding. |
 | **Rules** | The active sink table, grouped as cards, with the rule source (`sinks.yaml` or the built-in fallback). |
+| **Docs** | In-app documentation: install, usage, the rules schema, redaction, the HTTP API, security and troubleshooting. |
 | **Assistant** | Ask about a sink, redaction, triage or rules — optionally with a finding attached as context. |
 
 **Triage.** Each finding is keyed by `file:line:sink` and marked Open, Confirmed, False positive or Fixed. Status lives in `localStorage` under `redteam.triage.v1`, so it survives a reload while the server keeps no state.
@@ -299,12 +304,17 @@ redteam-linter/
 │   ├── assistant.py          # local KB + optional OpenAI-compatible provider
 │   ├── security.py           # CSP, headers, origin guard, body cap, rate limits
 │   └── static/
-│       ├── index.html        # four-view shell
-│       ├── styles.css        # design tokens + components
-│       └── app.js            # router, findings, triage, assistant, notifications
+│       ├── index.html        # six-view shell: home, scan, findings, rules, docs, assistant
+│       ├── styles.css        # design tokens, components, responsive, print
+│       ├── app.js            # router, findings, triage, assistant, notifications
+│       ├── favicon.svg       # wordmark
+│       ├── manifest.webmanifest
+│       ├── robots.txt
+│       └── img/console.png   # landing-page screenshot
 └── docs/
     ├── screenshot.png
-    └── screenshot-detail.png
+    ├── screenshot-detail.png
+    └── screenshot-home.png
 ```
 
 ## Limitations

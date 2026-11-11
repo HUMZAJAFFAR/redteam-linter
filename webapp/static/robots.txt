@@ -1,0 +1,4 @@
+# RedTeam Linter console — a local review tool.
+User-agent: *
+Disallow: /api/
+Disallow: /samples/
