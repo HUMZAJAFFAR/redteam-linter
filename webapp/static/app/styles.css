@@ -1317,3 +1317,12 @@ table.findings { min-width: 720px; }
   .card, .doc-section, .feature-card, .step { border-color: #ccc; background: #fff; box-shadow: none; }
   .view { display: block !important; }
 }
+
+/* view/tab panes: the hidden one must not occupy space */
+.is-hidden { display: none !important; }
+
+/* compact rail: keep the site link consistent with the nav icons */
+@media (max-width: 1180px) {
+  .rail-site { justify-content: center; padding: 9px 0; }
+  .rail-site span { display: none; }
+}
