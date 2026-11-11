@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security model — RedTeam Linter</title>
+<meta name="description" content="Threat model, implemented controls and disclosure policy for the RedTeam Linter console.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#06070a">
+<link rel="canonical" href="/security">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/site/site.css?v=1">
+<link rel="stylesheet" href="/shared/tooltip.css?v=1">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 2.6v6.1c0 4.4-3 7.6-7 8.9-4-1.3-7-4.5-7-8.9V5.6L12 3z"/><circle cx="12" cy="11.4" r="2.1"/><path d="M12 13.5V17"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="10" rx="2"/><path d="M8 10V7.5a4 4 0 018 0V10"/></symbol>
+</svg>
+
+<header class="site-header">
+  <div class="container nav-inner">
+    <a class="nav-brand" href="/" aria-label="RedTeam Linter home">
+      <span class="nav-logo"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+      <span class="nav-name"><strong>RedTeam<span class="accent">Linter</span></strong><small>Offensive SAST</small></span>
+    </a>
+    <nav class="nav-links" id="nav-links" aria-label="Primary">
+      <a class="nav-link" href="/docs">Docs</a>
+      <a class="nav-link" href="/security" aria-current="page">Security</a>
+      <a class="nav-link" href="/changelog">Changelog</a>
+      <a class="nav-link" href="/about">About</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-quiet" href="https://github.com/HUMZAJAFFAR/redteam-linter" target="_blank" rel="noopener noreferrer" data-tip="Source on GitHub" data-tip-desc="Repository, issues and release history.">GitHub</a>
+      <a class="btn btn-primary" href="/app" data-tip="Open the console" data-tip-desc="Scan a target, triage findings and ask the assistant.">Open console</a>
+      <button class="menu-toggle" type="button" aria-label="Menu" aria-controls="nav-links" aria-expanded="false" data-tip="Menu" data-tip-desc="Show the site navigation.">
+        <svg aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="section section-tight">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">Security model</p>
+        <h1 class="section-title">A tool that finds secrets should not leak them.</h1>
+        <p class="section-lede">The console is a local review tool. It assumes the code you scan may be hostile and the browser you scan from may have other tabs open. This page lists what that assumption costs and what is actually implemented.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">Threat model</p>
+        <h2 class="section-title">Four things worth defending against.</h2>
+      </div>
+      <div class="cols cols-2">
+        <article class="panel reveal">
+          <h3 class="panel-title">Another page driving the tool</h3>
+          <p class="panel-text">A malicious tab could POST a scan or export your findings if the API accepted cross-origin writes. Mitigated by JSON-only bodies, an Origin/Host check and a CSP that forbids framing.</p>
+        </article>
+        <article class="panel reveal" data-delay="1">
+          <h3 class="panel-title">Payload exhaustion</h3>
+          <p class="panel-text">A 500 MB upload would otherwise be buffered before validation. The body cap rejects oversized requests before they are read, including chunked bodies without a length header.</p>
+        </article>
+        <article class="panel reveal">
+          <h3 class="panel-title">Data becoming script</h3>
+          <p class="panel-text">Findings contain attacker-controlled source text. Every value is rendered with <code>textContent</code> or DOM builders, and the CSP forbids inline script and style, so a snippet cannot become markup or code.</p>
+        </article>
+        <article class="panel reveal" data-delay="1">
+          <h3 class="panel-title">The secret escaping</h3>
+          <p class="panel-text">The whole point is to find credentials without exfiltrating them. Redaction is enforced in one place and applied again to source excerpts; the assistant never receives snippets or secret values.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">Controls</p>
+        <h2 class="section-title">What is actually in the code.</h2>
+      </div>
+      <div class="prose spaced">
+        <table>
+          <thead><tr><th>Control</th><th>Implementation</th></tr></thead>
+          <tbody>
+            <tr><td>Strict CSP</td><td><code>default-src 'self'</code>, no inline script or style, no objects, <code>base-uri 'none'</code>, <code>form-action 'none'</code>.</td></tr>
+            <tr><td>MIME sniffing</td><td><code>X-Content-Type-Options: nosniff</code> on every response.</td></tr>
+            <tr><td>Clickjacking</td><td><code>frame-ancestors 'self'</code>, widenable only via <code>REDTEAM_FRAME_ANCESTORS</code>.</td></tr>
+            <tr><td>Cross-origin writes</td><td><code>Origin</code> must match <code>Host</code> for state-changing methods, otherwise <code>403</code>.</td></tr>
+            <tr><td>Body size</td><td>2.5 MB cap enforced before buffering, streaming-aware.</td></tr>
+            <tr><td>Abuse</td><td>Sliding-window limits per client and route, <code>429</code> with <code>Retry-After</code>.</td></tr>
+            <tr><td>Caching</td><td><code>Cache-Control: no-store</code> on every <code>/api</code> response.</td></tr>
+            <tr><td>API surface</td><td><code>/docs</code>, <code>/redoc</code> and <code>/openapi.json</code> disabled; server header suppressed.</td></tr>
+            <tr><td>Secrets</td><td>Redaction in the reporter, a second scrub pass on excerpts, and an eight-field whitelist for the assistant.</td></tr>
+            <tr><td>Paths</td><td>Submitted paths normalised, <code>..</code> stripped, <code>.py</code> enforced, duplicates suffixed.</td></tr>
+            <tr><td>Storage</td><td>The browser stores triage status and notification text only — no code, no findings.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">Configuration</p>
+        <h2 class="section-title">Knobs you can turn.</h2>
+      </div>
+      <div class="prose spaced-sm">
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>REDTEAM_MAX_BODY_BYTES</code></td><td>2621440</td><td>Request body cap, enforced before buffering.</td></tr>
+            <tr><td><code>REDTEAM_FRAME_ANCESTORS</code></td><td><code>'self'</code></td><td>CSP frame-ancestors; widen only for a trusted embedder.</td></tr>
+            <tr><td><code>REDTEAM_AI_KEY</code></td><td>unset</td><td>Enables model mode for the assistant. Never sent to the browser.</td></tr>
+            <tr><td><code>REDTEAM_AI_BASE</code></td><td>Z.ai compatible endpoint</td><td>Any OpenAI-compatible base URL.</td></tr>
+            <tr><td><code>REDTEAM_AI_MODEL</code></td><td><code>glm-4-flash</code></td><td>Model name for the assistant.</td></tr>
+          </tbody>
+        </table>
+        <p class="prose-note">This is defence in depth, not a formal audit. The console has no authentication: keep it bound to <code>127.0.0.1</code> and put a reverse proxy in front if you ever expose it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">Disclosure</p>
+        <h2 class="section-title">Found something?</h2>
+        <p class="section-lede">Please open a private security advisory on the repository rather than a public issue, and include the version from <code>/api/health</code>, the request that triggers it and the impact you believe it has.</p>
+      </div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/HUMZAJAFFAR/redteam-linter/security/advisories/new" target="_blank" rel="noopener noreferrer" data-tip="Report privately" data-tip-desc="Opens a GitHub security advisory draft.">Report a vulnerability</a>
+        <a class="btn btn-quiet" href="/docs#security" data-tip="Security docs" data-tip-desc="Controls and configuration reference.">Read the docs</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>© <span data-year>2026</span> RedTeam Linter · v0.2.0</span>
+      <span class="footer-note"><svg aria-hidden="true"><use href="#i-lock"/></svg> Redaction is enforced server-side; the browser never receives a raw secret.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/shared/tooltip.js?v=1" defer></script>
+<script src="/site/site.js?v=1" defer></script>
+</body>
+</html>

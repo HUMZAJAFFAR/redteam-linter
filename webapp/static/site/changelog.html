@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog — RedTeam Linter</title>
+<meta name="description" content="Release history for RedTeam Linter: detection engine, console and hardening changes.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#06070a">
+<link rel="canonical" href="/changelog">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/site/site.css?v=1">
+<link rel="stylesheet" href="/shared/tooltip.css?v=1">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 2.6v6.1c0 4.4-3 7.6-7 8.9-4-1.3-7-4.5-7-8.9V5.6L12 3z"/><circle cx="12" cy="11.4" r="2.1"/><path d="M12 13.5V17"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="10" rx="2"/><path d="M8 10V7.5a4 4 0 018 0V10"/></symbol>
+</svg>
+
+<header class="site-header">
+  <div class="container nav-inner">
+    <a class="nav-brand" href="/" aria-label="RedTeam Linter home">
+      <span class="nav-logo"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+      <span class="nav-name"><strong>RedTeam<span class="accent">Linter</span></strong><small>Offensive SAST</small></span>
+    </a>
+    <nav class="nav-links" id="nav-links" aria-label="Primary">
+      <a class="nav-link" href="/docs">Docs</a>
+      <a class="nav-link" href="/security">Security</a>
+      <a class="nav-link" href="/changelog" aria-current="page">Changelog</a>
+      <a class="nav-link" href="/about">About</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-quiet" href="https://github.com/HUMZAJAFFAR/redteam-linter" target="_blank" rel="noopener noreferrer" data-tip="Source on GitHub" data-tip-desc="Repository, issues and release history.">GitHub</a>
+      <a class="btn btn-primary" href="/app" data-tip="Open the console" data-tip-desc="Scan a target, triage findings and ask the assistant.">Open console</a>
+      <button class="menu-toggle" type="button" aria-label="Menu" aria-controls="nav-links" aria-expanded="false" data-tip="Menu" data-tip-desc="Show the site navigation.">
+        <svg aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="section section-tight">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">Changelog</p>
+        <h1 class="section-title">Release history.</h1>
+        <p class="section-lede">Versions are semantic. The engine, the reporter and the console move together, because the redaction boundary is shared.</p>
+      </div>
+
+      <article class="release reveal">
+        <header class="release-head">
+          <h2 class="release-version">0.2.0</h2>
+          <span class="release-date">2026-11-11</span>
+          <span class="tag is-crit">current</span>
+        </header>
+        <ul class="release-list">
+          <li><strong>Console rebuilt.</strong> Four views (Scan, Findings, Rules, Assistant) behind a hash router, with severity and triage filters, sorting and file/severity grouping.</li>
+          <li><strong>Triage workflow.</strong> Findings can be marked open, confirmed, false positive or fixed; status persists in the browser and survives reloads.</li>
+          <li><strong>Masked source viewer.</strong> Every finding carries a redacted excerpt with the flagged line highlighted and credential values replaced, never the raw line.</li>
+          <li><strong>Assistant.</strong> Answers offline from a remediation catalogue; optional OpenAI-compatible model mode with a server-side key and an eight-field whitelist.</li>
+          <li><strong>Notification centre.</strong> Scans, triage changes, exports, assistant replies and failures are recorded with an unread badge.</li>
+          <li><strong>Hardened HTTP surface.</strong> Strict CSP, nosniff, COOP/CORP, origin guard, streaming body cap, per-route rate limits and no-store API responses.</li>
+          <li><strong>Marketing site.</strong> Public landing, documentation, security model, changelog and about pages; the console now lives at <code>/app</code>.</li>
+          <li><strong>Web essentials.</strong> SVG favicon, manifest, Open Graph meta, robots.txt, print styles, skip link and cursor-following tooltips.</li>
+        </ul>
+      </article>
+
+      <article class="release reveal">
+        <header class="release-head">
+          <h2 class="release-version">0.1.0</h2>
+          <span class="release-date">2026-11-10</span>
+        </header>
+        <ul class="release-list">
+          <li><strong>Engine.</strong> AST sink matching with import-alias resolution, <code>shell=True</code> awareness and a taint heuristic over request/argv/input sources.</li>
+          <li><strong>Secret harvesting.</strong> AWS, GitHub, Slack, PEM, JWT, bearer and generic credential patterns with placeholder filtering.</li>
+          <li><strong>Reporter.</strong> Single redaction enforcement point, Rich terminal table and deterministic JSON export.</li>
+          <li><strong>Rules.</strong> Declarative <code>sinks.yaml</code> with validation and a built-in fallback table.</li>
+          <li><strong>First console.</strong> Paste/upload target, redacted findings table, rule inspector and JSON export.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>© <span data-year>2026</span> RedTeam Linter · v0.2.0</span>
+      <span class="footer-note"><svg aria-hidden="true"><use href="#i-lock"/></svg> Redaction is enforced server-side; the browser never receives a raw secret.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/shared/tooltip.js?v=1" defer></script>
+<script src="/site/site.js?v=1" defer></script>
+</body>
+</html>

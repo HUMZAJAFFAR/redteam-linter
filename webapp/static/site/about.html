@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About — RedTeam Linter</title>
+<meta name="description" content="Why RedTeam Linter exists, the principles behind its design, and what it deliberately does not do.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#06070a">
+<link rel="canonical" href="/about">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/site/site.css?v=1">
+<link rel="stylesheet" href="/shared/tooltip.css?v=1">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 2.6v6.1c0 4.4-3 7.6-7 8.9-4-1.3-7-4.5-7-8.9V5.6L12 3z"/><circle cx="12" cy="11.4" r="2.1"/><path d="M12 13.5V17"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="10" rx="2"/><path d="M8 10V7.5a4 4 0 018 0V10"/></symbol>
+</svg>
+
+<header class="site-header">
+  <div class="container nav-inner">
+    <a class="nav-brand" href="/" aria-label="RedTeam Linter home">
+      <span class="nav-logo"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+      <span class="nav-name"><strong>RedTeam<span class="accent">Linter</span></strong><small>Offensive SAST</small></span>
+    </a>
+    <nav class="nav-links" id="nav-links" aria-label="Primary">
+      <a class="nav-link" href="/docs">Docs</a>
+      <a class="nav-link" href="/security">Security</a>
+      <a class="nav-link" href="/changelog">Changelog</a>
+      <a class="nav-link" href="/about" aria-current="page">About</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-quiet" href="https://github.com/HUMZAJAFFAR/redteam-linter" target="_blank" rel="noopener noreferrer" data-tip="Source on GitHub" data-tip-desc="Repository, issues and release history.">GitHub</a>
+      <a class="btn btn-primary" href="/app" data-tip="Open the console" data-tip-desc="Scan a target, triage findings and ask the assistant.">Open console</a>
+      <button class="menu-toggle" type="button" aria-label="Menu" aria-controls="nav-links" aria-expanded="false" data-tip="Menu" data-tip-desc="Show the site navigation.">
+        <svg aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="section section-tight">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">About</p>
+        <h1 class="section-title">A small tool you can actually read.</h1>
+        <p class="section-lede">RedTeam Linter started from a simple frustration: most of the Python in an engagement is reviewed by hand, and the tooling either checks style or wants an account on someone else's server. This one is a few thousand lines, no build step, no telemetry, no upload.</p>
+      </div>
+      <div class="stat-row reveal">
+        <div class="stat"><div class="stat-value" data-count="7">7</div><div class="stat-label">Sink rules</div></div>
+        <div class="stat"><div class="stat-value" data-count="6">6</div><div class="stat-label">Credential patterns</div></div>
+        <div class="stat"><div class="stat-value" data-count="11">11</div><div class="stat-label">Findings in the fixture</div></div>
+        <div class="stat"><div class="stat-value is-low" data-count="0">0</div><div class="stat-label">External services</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">Principles</p>
+        <h2 class="section-title">Four rules the code follows.</h2>
+      </div>
+      <div class="cols cols-2">
+        <article class="panel reveal">
+          <h3 class="panel-title">1 · Never render a raw secret</h3>
+          <p class="panel-text">Not in the terminal, not in JSON, not in the browser. Redaction is output-side and lives in exactly one file, so there is one place to audit.</p>
+        </article>
+        <article class="panel reveal" data-delay="1">
+          <h3 class="panel-title">2 · Keep the evidence structural</h3>
+          <p class="panel-text">Analysis keeps the original bytes, and <code>arguments_passed</code> stays intact, because masking everything would destroy the data future taint tracing needs.</p>
+        </article>
+        <article class="panel reveal">
+          <h3 class="panel-title">3 · Config over code</h3>
+          <p class="panel-text">New sinks go in <code>sinks.yaml</code>. An invalid file degrades to the built-in table instead of breaking a scan mid-engagement.</p>
+        </article>
+        <article class="panel reveal" data-delay="1">
+          <h3 class="panel-title">4 · Run anywhere Python runs</h3>
+          <p class="panel-text">No bundler, no npm, no CDN. The console is plain HTML, CSS and Java-Script served by the same process as the API.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">Limits</p>
+        <h2 class="section-title">What it deliberately does not do.</h2>
+        <p class="section-lede">Honest scope is part of the design. These are known and documented rather than hidden.</p>
+      </div>
+      <div class="prose spaced-sm">
+        <ul>
+          <li><strong>No interprocedural analysis.</strong> Taint is a heuristic over the flagged call's arguments, not a call-graph proof.</li>
+          <li><strong>No project indexing.</strong> Files are parsed independently, so cross-file data flow is invisible.</li>
+          <li><strong>No authentication.</strong> The console is a loopback tool; it assumes you are the only user.</li>
+          <li><strong>No hosted service.</strong> Nothing is uploaded, so nothing is shared between machines — including triage state.</li>
+          <li><strong>No claim of completeness.</strong> Pattern-based credential detection misses encoded or generated secrets.</li>
+        </ul>
+        <p class="prose-note">If a rule is too broad for your codebase, narrow it in <code>sinks.yaml</code> rather than ignoring the finding. The Rules view always shows which rule fired.</p>
+      </div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="/app" data-tip="Open the console" data-tip-desc="Runs locally; nothing leaves your machine.">Open the console</a>
+        <a class="btn btn-quiet" href="https://github.com/HUMZAJAFFAR/redteam-linter" target="_blank" rel="noopener noreferrer" data-tip="Repository" data-tip-desc="Source, issues and release history on GitHub.">View the source</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>© <span data-year>2026</span> RedTeam Linter · v0.2.0</span>
+      <span class="footer-note"><svg aria-hidden="true"><use href="#i-lock"/></svg> Redaction is enforced server-side; the browser never receives a raw secret.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/shared/tooltip.js?v=1" defer></script>
+<script src="/site/site.js?v=1" defer></script>
+</body>
+</html>

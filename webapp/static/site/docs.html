@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documentation — RedTeam Linter</title>
+<meta name="description" content="Install, usage, rule schema, redaction model, HTTP API, security controls and troubleshooting for RedTeam Linter.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#06070a">
+<link rel="canonical" href="/docs">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/site/site.css?v=1">
+<link rel="stylesheet" href="/shared/tooltip.css?v=1">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 2.6v6.1c0 4.4-3 7.6-7 8.9-4-1.3-7-4.5-7-8.9V5.6L12 3z"/><circle cx="12" cy="11.4" r="2.1"/><path d="M12 13.5V17"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13m0 0l-5-5m5 5l-5 5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="10" rx="2"/><path d="M8 10V7.5a4 4 0 018 0V10"/></symbol>
+</svg>
+
+<header class="site-header">
+  <div class="container nav-inner">
+    <a class="nav-brand" href="/" aria-label="RedTeam Linter home">
+      <span class="nav-logo"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+      <span class="nav-name"><strong>RedTeam<span class="accent">Linter</span></strong><small>Offensive SAST</small></span>
+    </a>
+    <nav class="nav-links" id="nav-links" aria-label="Primary">
+      <a class="nav-link" href="/docs" aria-current="page">Docs</a>
+      <a class="nav-link" href="/security">Security</a>
+      <a class="nav-link" href="/changelog">Changelog</a>
+      <a class="nav-link" href="/about">About</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-quiet" href="https://github.com/HUMZAJAFFAR/redteam-linter" target="_blank" rel="noopener noreferrer" data-tip="Source on GitHub" data-tip-desc="Repository, issues and release history.">GitHub</a>
+      <a class="btn btn-primary" href="/app" data-tip="Open the console" data-tip-desc="Scan a target, triage findings and ask the assistant.">Open console</a>
+      <button class="menu-toggle" type="button" aria-label="Menu" aria-controls="nav-links" aria-expanded="false" data-tip="Menu" data-tip-desc="Show the site navigation.">
+        <svg aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="container docs-shell">
+    <aside class="docs-side" aria-label="Documentation contents">
+      <div class="docs-side-group">
+        <p class="docs-side-title">Getting started</p>
+        <ul>
+          <li><a class="docs-link" href="#install">Install</a></li>
+          <li><a class="docs-link" href="#usage">Usage</a></li>
+          <li><a class="docs-link" href="#console">The console</a></li>
+        </ul>
+      </div>
+      <div class="docs-side-group">
+        <p class="docs-side-title">Reference</p>
+        <ul>
+          <li><a class="docs-link" href="#rules">Rule schema</a></li>
+          <li><a class="docs-link" href="#redaction">Redaction</a></li>
+          <li><a class="docs-link" href="#api">HTTP API</a></li>
+          <li><a class="docs-link" href="#security">Security</a></li>
+          <li><a class="docs-link" href="#keyboard">Keyboard</a></li>
+        </ul>
+      </div>
+      <div class="docs-side-group">
+        <p class="docs-side-title">Help</p>
+        <ul>
+          <li><a class="docs-link" href="#troubleshooting">Troubleshooting</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <div class="prose">
+      <section id="install">
+        <h2>Install</h2>
+        <p>Requires Python 3.9 or newer. <code>rich</code> and <code>PyYAML</code> power the terminal report and the rule loader; FastAPI and uvicorn are only needed for the console.</p>
+        <pre><code>git clone https://github.com/HUMZAJAFFAR/redteam-linter.git
+cd redteam-linter
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt</code></pre>
+        <p class="prose-note">On Windows, activate with <code>.venv\Scripts\activate</code>. Nothing is installed globally.</p>
+      </section>
+
+      <section id="usage">
+        <h2>Usage</h2>
+        <p>Start the server, then open the console and click <strong>Load sample</strong> for a known-vulnerable fixture.</p>
+        <pre><code>.venv/bin/python -m uvicorn webapp.server:app --port 8000
+# console: http://127.0.0.1:8000/app
+# site:    http://127.0.0.1:8000/</code></pre>
+        <h3>Python API</h3>
+        <p>The console is a thin layer over the same engine the CLI uses. Import it directly when you want findings in your own pipeline.</p>
+        <pre><code>from webapp.engine import scan_files
+from reporter import ReportGenerator
+from config_loader import load_sink_config
+
+findings, scanned, skipped = scan_files(
+    [{"path": "target.py", "content": source}],
+    load_sink_config("sinks.yaml"),
+)
+
+generator = ReportGenerator(findings, files_scanned=len(scanned))
+generator.print_report()
+generator.export_to_json("redteam-report.json")</code></pre>
+      </section>
+
+      <section id="console">
+        <h2>The console</h2>
+        <p>Four working views, behind a hash router:</p>
+        <table>
+          <thead><tr><th>View</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>#/scan</code></td><td>Paste code or drop up to 25 files (2 MB total), run the scan, read the summary tiles.</td></tr>
+            <tr><td><code>#/findings</code></td><td>Filter by severity, triage status and text; group by file or severity; open any finding.</td></tr>
+            <tr><td><code>#/rules</code></td><td>The sink table currently loaded, with its source (<code>sinks.yaml</code> or the built-in fallback).</td></tr>
+            <tr><td><code>#/assistant</code></td><td>Ask about a finding or about the tool; answers come from a local catalogue unless a key is configured.</td></tr>
+          </tbody>
+        </table>
+        <p>Triage status is stored in <code>localStorage</code> under <code>redteam.triage.v1</code>, keyed by <code>file:line:sink</code>. Notifications live under <code>redteam.notif.v1</code>. The server keeps no state.</p>
+      </section>
+
+      <section id="rules">
+        <h2>Rule schema</h2>
+        <p>Sinks are declared in <code>sinks.yaml</code>. Only <code>name</code> is required; import aliases are resolved by the analyzer, so write the canonical dotted name once.</p>
+        <pre><code>sinks:
+  - name: "subprocess.call"
+    category: "RCE"
+    requires_shell_true: true
+    description: "Safe with a list and shell=False."</code></pre>
+        <table>
+          <thead><tr><th>Key</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>name</code></td><td>Callable as written in source, or a bare name like <code>eval</code>.</td></tr>
+            <tr><td><code>category</code></td><td>Free-form taint family shown in the report.</td></tr>
+            <tr><td><code>requires_shell_true</code></td><td>Only flag the call when <code>shell=True</code> is present.</td></tr>
+            <tr><td><code>severity</code>, <code>description</code></td><td>Optional annotations carried through untouched.</td></tr>
+          </tbody>
+        </table>
+        <p class="prose-note">If the file is missing or invalid, the built-in table is used and the Rules view reports a fallback. Validate after editing: <code>python -c "import yaml; yaml.safe_load(open('sinks.yaml'))"</code>.</p>
+      </section>
+
+      <section id="redaction">
+        <h2>Redaction</h2>
+        <p>Redaction is output-side and happens exactly once, in <code>reporter.ReportGenerator</code>. The engine keeps the original bytes in memory so taint analysis can still reason about them.</p>
+        <ul>
+          <li>Evidence keeps its first four characters: <code>AKIA***REDACTED***</code>.</li>
+          <li>Source excerpts mask the value, not the line: <code>DB_PASSWORD = "&lt;redacted&gt;"</code>.</li>
+          <li><code>arguments_passed</code> stays intact — it is the taint bridge, not credential material.</li>
+          <li>The reporter re-scrubs excerpt text, so a credential the engine missed still cannot reach the page.</li>
+          <li>Clipboard, export and devtools all see the same redacted structure.</li>
+        </ul>
+      </section>
+
+      <section id="api">
+        <h2>HTTP API</h2>
+        <table>
+          <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>GET</td><td><code>/api/health</code></td><td>Engine, version, rule count, rule source.</td></tr>
+            <tr><td>GET</td><td><code>/api/rules</code></td><td>Active sink rules.</td></tr>
+            <tr><td>POST</td><td><code>/api/scan</code></td><td>Scan documents, return the redacted payload.</td></tr>
+            <tr><td>POST</td><td><code>/api/report</code></td><td>Scan and download the redacted JSON report.</td></tr>
+            <tr><td>GET</td><td><code>/api/assistant/status</code></td><td>Local or model mode, never the key.</td></tr>
+            <tr><td>POST</td><td><code>/api/assistant</code></td><td>Answer a question, optionally with a finding summary.</td></tr>
+          </tbody>
+        </table>
+        <pre><code>curl -s -X POST http://127.0.0.1:8000/api/scan \
+  -H 'Content-Type: application/json' \
+  -d '{"files":[{"path":"target.py","content":"import os\nos.system(cmd)\n"}]}'</code></pre>
+        <p>Response shape: <code>{"summary": {...}, "findings": [...], "meta": {...}}</code>. Limits: 25 files, 2 MB total. Errors: <code>422</code> empty payload, <code>413</code> oversized, <code>403</code> cross-origin, <code>429</code> rate limited.</p>
+      </section>
+
+      <section id="security">
+        <h2>Security</h2>
+        <ul>
+          <li>Strict CSP with no inline script or style; <code>nosniff</code>, no referrer, COOP/CORP, restrictive permissions policy.</li>
+          <li>Cross-origin state-changing requests are rejected with <code>403</code>; API responses are <code>no-store</code>.</li>
+          <li>Bodies over <code>REDTEAM_MAX_BODY_BYTES</code> (2.5 MB) are rejected before buffering, chunked uploads included.</li>
+          <li>Per-client rate limits: assistant 20/min, scan 40/min, report 20/min, <code>/api</code> 120/min.</li>
+          <li>No authentication: bind to <code>127.0.0.1</code> and keep it off untrusted networks.</li>
+        </ul>
+        <p>Full threat model and disclosure policy: <a href="/security">/security</a>.</p>
+      </section>
+
+      <section id="keyboard">
+        <h2>Keyboard</h2>
+        <table>
+          <thead><tr><th>Keys</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd></td><td>Run a scan</td></tr>
+            <tr><td><kbd>Alt</kbd> + <kbd>1…4</kbd></td><td>Switch console view</td></tr>
+            <tr><td><kbd>/</kbd></td><td>Focus the findings filter</td></tr>
+            <tr><td><kbd>t</kbd></td><td>Cycle grouping (table · file · severity)</td></tr>
+            <tr><td><kbd>Esc</kbd></td><td>Close the detail panel, notifications or help</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="troubleshooting">
+        <h2>Troubleshooting</h2>
+        <h3>The scan returns 413</h3>
+        <p>The payload exceeded 2 MB or the request body cap. Split the upload or scan fewer files.</p>
+        <h3>Repeated 429 responses</h3>
+        <p>Rate limits are per client and per route. Wait for the window to reset; the response carries <code>Retry-After</code>.</p>
+        <h3>403 cross-origin request blocked</h3>
+        <p>The <code>Origin</code> header did not match the host. Call the API from the same origin as the console.</p>
+        <h3>The assistant badge says “local”</h3>
+        <p>No model key is configured. Set <code>REDTEAM_AI_KEY</code> (optionally <code>REDTEAM_AI_BASE</code> and <code>REDTEAM_AI_MODEL</code>) and restart. Local mode is fully functional without it.</p>
+        <h3>Port already in use</h3>
+        <p>Start uvicorn with a different <code>--port</code>, or stop the previous instance.</p>
+      </section>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>© <span data-year>2026</span> RedTeam Linter · v0.2.0</span>
+      <span class="footer-note"><svg aria-hidden="true"><use href="#i-lock"/></svg> Redaction is enforced server-side; the browser never receives a raw secret.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/shared/tooltip.js?v=1" defer></script>
+<script src="/site/site.js?v=1" defer></script>
+</body>
+</html>

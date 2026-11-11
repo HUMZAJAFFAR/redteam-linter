@@ -2,7 +2,7 @@
 
 **Offensive-oriented static analysis for Python — AST sink detection, secret harvesting, a triaged browser console and a built-in assistant, with redaction enforced on the way out.**
 
-RedTeam Linter parses Python with `ast`, flags calls to dangerous sinks (`eval`, `exec`, `compile`, `os.system`, `subprocess.call(shell=True)`, `pickle.loads`, …) plus hardcoded credentials, and presents them through a severity-ranked terminal report, a deterministic JSON artifact, or a six-view web console with a landing page and in-app documentation.
+RedTeam Linter parses Python with `ast`, flags calls to dangerous sinks (`eval`, `exec`, `compile`, `os.system`, `subprocess.call(shell=True)`, `pickle.loads`, …) plus hardcoded credentials, and presents them through a severity-ranked terminal report, a deterministic JSON artifact, or a public marketing site plus a four-view browser console at `/app`.
 
 Every finding is redacted **before** it is printed, serialized or sent to the browser. Raw secrets and raw matched lines never reach your terminal, your JSON export, devtools, or the assistant.
 
@@ -57,13 +57,14 @@ Harvesting, analysis, reporting and presentation are separate layers, so any one
 
 **Console** (vanilla HTML/CSS/JS, no build step)
 
-- Six views — **Home**, **Scan**, **Findings**, **Rules**, **Docs**, **Assistant** — behind a hash router, with a skip link, a footer and a 404 route.
+- Four views — **Scan**, **Findings**, **Rules**, **Assistant** — behind a hash router, with a skip link, a footer and a not-found view. Marketing pages (landing, docs, security, changelog, about, 404) are server-rendered HTML at their own paths.
+- Cursor-following tooltips on every button and icon: a label plus a one-line description, clamped to the viewport, anchored to the control for keyboard focus, and disabled on touch devices.
 - Findings table with severity chips, status chips, free-text filter, sort control, and grouping by file or by severity.
 - Detail sheet: triage status, why it matters, masked evidence, `arguments_passed`, a redacted source excerpt with the flagged line highlighted, metadata, copy-finding, ask-assistant.
 - Triage status per finding (Open / Confirmed / False positive / Fixed), persisted in the browser.
 - Notification centre with unread badge for scans, triage changes, exports, assistant replies and failures.
 - Rule inspector showing exactly what was loaded from `sinks.yaml`.
-- Keyboard: <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd> scan, <kbd>Alt</kbd>+<kbd>1…6</kbd> switch view, <kbd>/</kbd> filter, <kbd>t</kbd> cycle grouping, <kbd>Esc</kbd> close.
+- Keyboard: <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd> scan, <kbd>Alt</kbd>+<kbd>1…4</kbd> switch view, <kbd>/</kbd> filter, <kbd>t</kbd> cycle grouping, <kbd>Esc</kbd> close.
 - Web essentials: SVG favicon and web manifest, Open Graph/Twitter meta, `robots.txt`, a print stylesheet, a skip link and focus-trapped dialogs.
 - Responsive from wide desktop down to tablet; no horizontal page scroll.
 - All rendering uses DOM APIs and `textContent` — a hostile snippet cannot become markup.
@@ -115,7 +116,8 @@ pip install -r requirements.txt
 
 ```bash
 .venv/bin/python -m uvicorn webapp.server:app --host 127.0.0.1 --port 8000
-# open http://127.0.0.1:8000
+# site:    http://127.0.0.1:8000
+# console: http://127.0.0.1:8000/app
 ```
 
 Or the equivalent entry point (also suppresses the server banner):
@@ -153,12 +155,24 @@ generator.export_to_json("redteam-report.json")   # redacted JSON artifact
 
 | View | What it does |
 | --- | --- |
-| **Home** | Product overview: what it catches, how a scan flows, the quick-start commands and the security posture. |
 | **Scan** | Paste code or drop up to 25 `.py` files (2 MB total), run the scan, see the summary tiles and timing. |
 | **Findings** | Filter by severity, triage status and free text; sort by severity/location/sink; switch between table, by-file and by-severity grouping; open any finding. |
 | **Rules** | The active sink table, grouped as cards, with the rule source (`sinks.yaml` or the built-in fallback). |
-| **Docs** | In-app documentation: install, usage, the rules schema, redaction, the HTTP API, security and troubleshooting. |
 | **Assistant** | Ask about a sink, redaction, triage or rules — optionally with a finding attached as context. |
+
+### Site pages
+
+| Page | Path | Contents |
+| --- | --- | --- |
+| Landing | `/` | Hero, product shot, capabilities, rule preview, security summary, CTA. |
+| Docs | `/docs` | Install, usage, console, rule schema, redaction, HTTP API, security, keyboard, troubleshooting. |
+| Security | `/security` | Threat model, implemented controls, configuration knobs, disclosure policy. |
+| Changelog | `/changelog` | Release history. |
+| About | `/about` | Motivation, design principles, deliberate limits. |
+| Console | `/app` | The four working views. |
+| 404 | any unknown path | Styled not-found page; unknown `/api/*` paths stay JSON. |
+
+**Tooltips.** The site and the console share one engine (`static/shared/tooltip.js`). Any element with `data-tip` gets a tooltip at 120 ms; `data-tip-desc` adds the one-line description. It follows the cursor (rAF, viewport-clamped), anchors to the element for keyboard focus, uses `aria-describedby` and touch falls back to no tooltip.
 
 **Triage.** Each finding is keyed by `file:line:sink` and marked Open, Confirmed, False positive or Fixed. Status lives in `localStorage` under `redteam.triage.v1`, so it survives a reload while the server keeps no state.
 
@@ -304,13 +318,26 @@ redteam-linter/
 │   ├── assistant.py          # local KB + optional OpenAI-compatible provider
 │   ├── security.py           # CSP, headers, origin guard, body cap, rate limits
 │   └── static/
-│       ├── index.html        # six-view shell: home, scan, findings, rules, docs, assistant
-│       ├── styles.css        # design tokens, components, responsive, print
-│       ├── app.js            # router, findings, triage, assistant, notifications
+│       ├── site/             # public pages: / , /docs, /security, /changelog, /about, 404
+│       │   ├── index.html
+│       │   ├── docs.html
+│       │   ├── security.html
+│       │   ├── changelog.html
+│       │   ├── about.html
+│       │   ├── 404.html
+│       │   ├── site.css      # editorial type scale, panels, motion
+│       │   └── site.js       # sticky header, reveals, count-up, scroll-spy
+│       ├── app/              # the console at /app
+│       │   ├── index.html    # four views: scan, findings, rules, assistant
+│       │   ├── styles.css    # console tokens, components, responsive, print
+│       │   └── app.js        # router, findings, triage, assistant, notifications
+│       ├── shared/           # one tooltip engine for both surfaces
+│       │   ├── tooltip.css
+│       │   └── tooltip.js
 │       ├── favicon.svg       # wordmark
 │       ├── manifest.webmanifest
 │       ├── robots.txt
-│       └── img/console.png   # landing-page screenshot
+│       └── img/console.png   # console screenshot used by the landing page
 └── docs/
     ├── screenshot.png
     ├── screenshot-detail.png

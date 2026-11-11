@@ -26,13 +26,11 @@ const STORE_TRIAGE = 'redteam.triage.v1';
 const STORE_NOTIF = 'redteam.notif.v1';
 
 const VIEW_META = {
-  home: { title: 'RedTeam Linter', subtitle: 'Offensive static analysis for Python — AST sink detection with server-side redaction.' },
   scan: { title: 'Scan', subtitle: 'Paste code or drop Python files, then run the linter.' },
   findings: { title: 'Findings', subtitle: 'Filter, group and triage the redacted report.' },
   rules: { title: 'Rules', subtitle: 'The sink table the analyzer is currently running.' },
-  docs: { title: 'Docs', subtitle: 'Install, usage, rules, the API, the security model and troubleshooting.' },
   assistant: { title: 'Assistant', subtitle: 'Ask about a finding, a sink or how the tool behaves.' },
-  notfound: { title: 'Not found', subtitle: 'That section does not exist — pick one from the sidebar.' }
+  notfound: { title: 'Not found', subtitle: 'That view does not exist — pick one from the sidebar.' }
 };
 
 const SAMPLE_FALLBACK = [
@@ -1308,9 +1306,9 @@ function bindEvents() {
       renderAll();
       return;
     }
-    if (event.altKey && ['1', '2', '3', '4', '5', '6'].includes(event.key)) {
+    if (event.altKey && ['1', '2', '3', '4'].includes(event.key)) {
       event.preventDefault();
-      showView(['home', 'scan', 'findings', 'rules', 'docs', 'assistant'][Number(event.key) - 1]);
+      showView(['scan', 'findings', 'rules', 'assistant'][Number(event.key) - 1]);
     }
   });
 }
@@ -1334,7 +1332,7 @@ async function boot() {
   }
 
   const requested = location.hash.replace('#/', '');
-  showView(VIEW_META[requested] ? requested : 'home', { hash: false });
+  showView(VIEW_META[requested] ? requested : 'scan', { hash: false });
 
   await Promise.all([loadHealth(), loadRules(), loadAssistantStatus()]);
 }

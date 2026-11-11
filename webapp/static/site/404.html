@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page not found — RedTeam Linter</title>
+<meta name="description" content="That page does not exist. Try the documentation, the security model or the console.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#06070a">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/site/site.css?v=1">
+<link rel="stylesheet" href="/shared/tooltip.css?v=1">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 2.6v6.1c0 4.4-3 7.6-7 8.9-4-1.3-7-4.5-7-8.9V5.6L12 3z"/><circle cx="12" cy="11.4" r="2.1"/><path d="M12 13.5V17"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="10" rx="2"/><path d="M8 10V7.5a4 4 0 018 0V10"/></symbol>
+</svg>
+
+<header class="site-header">
+  <div class="container nav-inner">
+    <a class="nav-brand" href="/" aria-label="RedTeam Linter home">
+      <span class="nav-logo"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+      <span class="nav-name"><strong>RedTeam<span class="accent">Linter</span></strong><small>Offensive SAST</small></span>
+    </a>
+    <nav class="nav-links" id="nav-links" aria-label="Primary">
+      <a class="nav-link" href="/docs">Docs</a>
+      <a class="nav-link" href="/security">Security</a>
+      <a class="nav-link" href="/changelog">Changelog</a>
+      <a class="nav-link" href="/about">About</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-primary" href="/app" data-tip="Open the console" data-tip-desc="Scan a target, triage findings and ask the assistant.">Open console</a>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="container n404">
+    <p class="n404-code">404</p>
+    <h1>That page does not exist</h1>
+    <p>The console, the documentation and the rule table all live somewhere else. Nothing was broken — the link just points at a path this site does not serve.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="/app" data-tip="Open the console" data-tip-desc="Scan a target and triage the results.">Open the console</a>
+      <a class="btn btn-quiet" href="/docs" data-tip="Documentation" data-tip-desc="Install, usage and the HTTP API.">Read the docs</a>
+      <a class="btn btn-quiet" href="/">Back home</a>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>© <span data-year>2026</span> RedTeam Linter · v0.2.0</span>
+      <span class="footer-note"><svg aria-hidden="true"><use href="#i-lock"/></svg> Redaction is enforced server-side; the browser never receives a raw secret.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/shared/tooltip.js?v=1" defer></script>
+<script src="/site/site.js?v=1" defer></script>
+</body>
+</html>

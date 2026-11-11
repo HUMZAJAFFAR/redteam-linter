@@ -31,10 +31,11 @@ PROJECT_ROOT = BASE_DIR.parent
 if str(PROJECT_ROOT) not in sys.path:  # make reporter/config_loader importable
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from config_loader import DEFAULT_SINKS, load_sink_config
 from reporter import ReportGenerator
@@ -50,6 +51,8 @@ SINK_CONFIG_PATH = PROJECT_ROOT / "sinks.yaml"
 MAX_FILES = 25
 MAX_TOTAL_BYTES = 2 * 1024 * 1024
 STATIC_DIR = BASE_DIR / "static"
+SITE_DIR = STATIC_DIR / "site"
+APP_DIR = STATIC_DIR / "app"
 VERSION = "0.2.0"
 
 app = FastAPI(title="RedTeam Linter", docs_url=None, redoc_url=None, openapi_url=None)
@@ -234,13 +237,58 @@ def assistant(request: AssistantRequest) -> Dict[str, Any]:
     return ask_assistant(question, request.finding)
 
 
-@app.get("/", response_class=HTMLResponse)
-def index() -> HTMLResponse:
-    """Serve the console shell."""
-    page = STATIC_DIR / "index.html"
+def _page(directory: Path, filename: str) -> HTMLResponse:
+    """Read one static page into an HTML response."""
+    page = directory / filename
     if not page.exists():  # pragma: no cover
-        raise HTTPException(status_code=500, detail="UI assets are missing.")
+        raise HTTPException(status_code=500, detail=f"Missing page: {filename}")
     return HTMLResponse(page.read_text(encoding="utf-8"))
+
+
+@app.get("/", response_class=HTMLResponse)
+def landing() -> HTMLResponse:
+    """Marketing landing page."""
+    return _page(SITE_DIR, "index.html")
+
+
+@app.get("/app", response_class=HTMLResponse)
+def console() -> HTMLResponse:
+    """The console shell; its views are hash-routed in the browser."""
+    return _page(APP_DIR, "index.html")
+
+
+@app.get("/docs", response_class=HTMLResponse)
+def docs_page() -> HTMLResponse:
+    """Documentation page."""
+    return _page(SITE_DIR, "docs.html")
+
+
+@app.get("/security", response_class=HTMLResponse)
+def security_page() -> HTMLResponse:
+    """Security model and disclosure policy."""
+    return _page(SITE_DIR, "security.html")
+
+
+@app.get("/changelog", response_class=HTMLResponse)
+def changelog_page() -> HTMLResponse:
+    """Release history."""
+    return _page(SITE_DIR, "changelog.html")
+
+
+@app.get("/about", response_class=HTMLResponse)
+def about_page() -> HTMLResponse:
+    """About the project and its deliberate limits."""
+    return _page(SITE_DIR, "about.html")
+
+
+@app.exception_handler(StarletteHTTPException)
+def http_error(request: Request, exc: StarletteHTTPException) -> Response:
+    """Serve the styled 404 for pages and plain JSON for the API."""
+    if exc.status_code == 404 and not request.url.path.startswith("/api"):
+        page = SITE_DIR / "404.html"
+        if page.exists():
+            return HTMLResponse(page.read_text(encoding="utf-8"), status_code=404)
+    return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
 
 
 # Sample targets are served so the UI (and a reviewer) can fetch a known-vulnerable

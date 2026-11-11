@@ -1297,8 +1297,22 @@ table.findings { min-width: 720px; }
   .footer { padding: 16px 14px; }
 }
 
+/* link from the console rail back to the public site */
+.rail-site {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: rgba(19, 23, 34, 0.5);
+  color: var(--text-2);
+  font-size: 13px;
+  transition: color 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+.rail-site:hover { color: var(--text); border-color: var(--line-strong); background: rgba(255, 255, 255, 0.04); }
+.rail-site svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
 @media print {
-  .rail, .topbar, .toolbar, .toasts, .popover, .sheet, .sheet-backdrop, .footer, .docs-nav, .hero-actions { display: none !important; }
+  .rail, .topbar, .toolbar, .toasts, .popover, .sheet, .sheet-backdrop, .footer, .docs-nav, .hero-actions, .rail-site { display: none !important; }
   body { background: #fff; color: #111; }
   .card, .doc-section, .feature-card, .step { border-color: #ccc; background: #fff; box-shadow: none; }
   .view { display: block !important; }

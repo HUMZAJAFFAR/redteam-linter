@@ -1,0 +1,62 @@
+/* ============================================================================
+   Cursor-following tooltip — shared by the marketing site and the console.
+   Kept standalone so both surfaces load exactly one implementation.
+   ========================================================================= */
+
+.rt-tooltip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 999;
+  max-width: 272px;
+  padding: 8px 11px;
+  border: 1px solid rgba(43, 52, 70, 0.95);
+  border-radius: 9px;
+  background: linear-gradient(180deg, #12161f, #0a0d13);
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.9);
+  color: #e9eef8;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate3d(0, 4px, 0) scale(0.98);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  will-change: transform, opacity;
+}
+
+.rt-tooltip.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.rt-tooltip-label {
+  display: block;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.rt-tooltip-desc {
+  display: block;
+  margin-top: 2px;
+  color: #9aa5bb;
+  font-size: 11.5px;
+}
+
+.rt-tooltip-desc:empty {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rt-tooltip {
+    transition: opacity 0.01ms linear;
+    transform: none;
+  }
+}
+
+/* Never show cursor bubbles on touch devices: they stick. */
+@media (hover: none), (pointer: coarse) {
+  .rt-tooltip {
+    display: none;
+  }
+}

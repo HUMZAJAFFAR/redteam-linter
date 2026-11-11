@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RedTeam Linter — Offensive SAST for Python</title>
+<meta name="description" content="AST sink detection, credential harvesting and a triaged, redacted report for Python source. A local-first security tool with a browser console.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#06070a">
+<meta property="og:type" content="website">
+<meta property="og:title" content="RedTeam Linter — Offensive SAST for Python">
+<meta property="og:description" content="Find the weaponizable calls before someone else does. AST sink detection with server-side redaction.">
+<meta property="og:image" content="/img/console.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="/">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/site/site.css?v=1">
+<link rel="stylesheet" href="/shared/tooltip.css?v=1">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 2.6v6.1c0 4.4-3 7.6-7 8.9-4-1.3-7-4.5-7-8.9V5.6L12 3z"/><circle cx="12" cy="11.4" r="2.1"/><path d="M12 13.5V17"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13m0 0l-5-5m5 5l-5 5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="10" rx="2"/><path d="M8 10V7.5a4 4 0 018 0V10"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 7l-5 5 5 5M15 7l5 5-5 5"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 012-2h2M20 8V6a2 2 0 00-2-2h-2M4 16v2a2 2 0 002 2h2M20 16v2a2 2 0 01-2 2h-2"/><path d="M8 12h8"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 4.9L19 9.8l-5.1 1.9L12 16.6l-1.9-4.9L5 9.8l5.1-1.9z"/><path d="M18 16l.8 2L21 18.8l-2.2.8L18 21.6l-.8-2L15 18.8l2.2-.8z"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></symbol>
+</svg>
+
+<header class="site-header">
+  <div class="container nav-inner">
+    <a class="nav-brand" href="/" aria-label="RedTeam Linter home">
+      <span class="nav-logo"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+      <span class="nav-name"><strong>RedTeam<span class="accent">Linter</span></strong><small>Offensive SAST</small></span>
+    </a>
+    <nav class="nav-links" id="nav-links" aria-label="Primary">
+      <a class="nav-link" href="/docs" data-tip="Documentation" data-tip-desc="Install, usage, rules, the HTTP API and troubleshooting.">Docs</a>
+      <a class="nav-link" href="/security" data-tip="Security model" data-tip-desc="Threat model, the controls in place, and how to report a vulnerability.">Security</a>
+      <a class="nav-link" href="/changelog" data-tip="Changelog" data-tip-desc="What changed in each release.">Changelog</a>
+      <a class="nav-link" href="/about" data-tip="About" data-tip-desc="Why the tool exists, its principles and its limits.">About</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn btn-quiet" href="https://github.com/HUMZAJAFFAR/redteam-linter" target="_blank" rel="noopener noreferrer" data-tip="Source on GitHub" data-tip-desc="Repository, issues and release history.">GitHub</a>
+      <a class="btn btn-primary" href="/app" data-tip="Open the console" data-tip-desc="Scan a target, triage findings and ask the assistant.">Open console</a>
+      <button class="menu-toggle" type="button" aria-label="Menu" aria-controls="nav-links" aria-expanded="false" data-tip="Menu" data-tip-desc="Show the site navigation.">
+        <svg aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <span class="hero-glow hero-glow--a" aria-hidden="true"></span>
+    <span class="hero-glow hero-glow--b" aria-hidden="true"></span>
+    <div class="container hero-inner">
+      <span class="eyebrow reveal"><i></i> Offensive SAST · Python 3.9+</span>
+      <h1 class="display reveal" data-delay="1">Find the weaponizable calls<br><span class="display-accent">before someone else does.</span></h1>
+      <p class="lede reveal" data-delay="2">RedTeam Linter parses Python with the real AST, flags dangerous sinks and hardcoded credentials, and hands you a triaged report where every secret is already masked.</p>
+      <div class="cta-row reveal" data-delay="3">
+        <a class="btn btn-primary btn-lg" href="/app" data-tip="Open the console" data-tip-desc="Runs locally: paste code or drop files, then scan.">
+          <svg aria-hidden="true"><use href="#i-scan"/></svg> Open the console
+        </a>
+        <a class="btn btn-quiet btn-lg" href="/docs" data-tip="Read the docs" data-tip-desc="Five minutes from clone to first report.">
+          Read the docs <svg aria-hidden="true"><use href="#i-arrow"/></svg>
+        </a>
+      </div>
+      <dl class="hero-meta reveal">
+        <div><dd class="meta-value" data-count="7">7</dd><dt class="meta-label">Sink rules</dt></div>
+        <div><dd class="meta-value" data-count="6">6</dd><dt class="meta-label">Credential patterns</dt></div>
+        <div><dd class="meta-value" data-count="5">5</dd><dt class="meta-label">Severity tiers</dt></div>
+        <div><dd class="meta-value is-low" data-count="0">0</dd><dt class="meta-label">Secrets shipped</dt></div>
+      </dl>
+    </div>
+  </section>
+
+  <div class="container">
+    <figure class="shot-frame reveal">
+      <img src="/img/console.png" alt="The console's Findings view: eleven findings across one file with masked evidence, severity filters and a triage rail." loading="lazy">
+      <figcaption class="shot-caption">
+        <span>Scanning the bundled fixture — 4 critical, 4 high, 3 medium.</span>
+        <span class="tag">every secret masked</span>
+      </figcaption>
+    </figure>
+  </div>
+
+  <section class="section" id="why">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">Why it exists</p>
+        <h2 class="section-title">Most Python linters check style. Most SAST tools are heavy, noisy or SaaS.</h2>
+        <p class="section-lede">This is a small tool you can read end to end in an afternoon, built for the audit workflow: point it at a target, get the risky call sites ranked, triage them, export something safe to attach to a writeup.</p>
+      </div>
+      <div class="cols cols-2">
+        <article class="panel reveal">
+          <span class="panel-icon"><svg aria-hidden="true"><use href="#i-code"/></svg></span>
+          <h3 class="panel-title">The problem with grep</h3>
+          <p class="panel-text">Pattern matching flags docstrings, comments and dead code. It cannot tell <code>subprocess.call(argv)</code> from <code>subprocess.call(cmd, shell=True)</code>, and it has no idea whether the argument came from a request.</p>
+        </article>
+        <article class="panel reveal" data-delay="1">
+          <span class="panel-icon"><svg aria-hidden="true"><use href="#i-scan"/></svg></span>
+          <h3 class="panel-title">What this does instead</h3>
+          <p class="panel-text">The analyzer walks the real parse tree, resolves import aliases, checks every call against a YAML rule table and escalates the ones whose arguments trace back to user input. Secrets are harvested in the same pass.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt" id="features">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">Capabilities</p>
+        <h2 class="section-title">Detection, triage and a redaction boundary that holds.</h2>
+      </div>
+      <div class="cols cols-3">
+        <article class="panel reveal">
+          <span class="panel-icon"><svg aria-hidden="true"><use href="#i-code"/></svg></span>
+          <h3 class="panel-title">Sink detection</h3>
+          <p class="panel-text"><code>eval</code>, <code>exec</code>, <code>compile</code>, <code>os.system</code>, <code>os.popen</code>, <code>subprocess.call</code> and <code>pickle.loads</code>, with alias resolution and shell awareness.</p>
+        </article>
+        <article class="panel reveal" data-delay="1">
+          <span class="panel-icon"><svg aria-hidden="true"><use href="#i-lock"/></svg></span>
+          <h3 class="panel-title">Credentials</h3>
+          <p class="panel-text">AWS key IDs, GitHub and Slack tokens, PEM private keys, JWTs, bearer tokens and generic assignments — with placeholder filtering to keep the noise down.</p>
+        </article>
+        <article class="panel reveal" data-delay="2">
+          <span class="panel-icon"><svg aria-hidden="true"><use href="#i-list"/></svg></span>
+          <h3 class="panel-title">Triage workflow</h3>
+          <p class="panel-text">Mark findings open, confirmed, false positive or fixed; filter by severity and status; group by file or by severity; open any finding for its masked source line.</p>
+        </article>
+        <article class="panel reveal">
+          <span class="panel-icon"><svg aria-hidden="true"><use href="#i-spark"/></svg></span>
+          <h3 class="panel-title">Assistant</h3>
+          <p class="panel-text">Ask about any finding. It sees only redacted fields, answers offline from a remediation catalogue, and upgrades to a model only if you configure a key server-side.</p>
+        </article>
+        <article class="panel reveal" data-delay="1">
+          <span class="panel-icon"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+          <h3 class="panel-title">Server-side redaction</h3>
+          <p class="panel-text">Redaction happens once, in the reporter: evidence keeps four characters, source excerpts mask the value and keep the line, and the browser never receives the raw bytes.</p>
+        </article>
+        <article class="panel reveal" data-delay="2">
+          <span class="panel-icon"><svg aria-hidden="true"><use href="#i-check"/></svg></span>
+          <h3 class="panel-title">Deterministic output</h3>
+          <p class="panel-text">The terminal report and the JSON export come from the same generator, so a finding looks identical in your shell, in the console and in the file you attach to a ticket.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="how">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">How it works</p>
+        <h2 class="section-title">Three steps, no build pipeline.</h2>
+      </div>
+      <div class="steps">
+        <article class="step-card reveal">
+          <span class="step-num">1</span>
+          <h3 class="step-title">Add a target</h3>
+          <p class="step-text">Paste code or drop up to 25 Python files. Nothing is written to disk and no state survives the request.</p>
+        </article>
+        <article class="step-card reveal" data-delay="1">
+          <span class="step-num">2</span>
+          <h3 class="step-title">Scan</h3>
+          <p class="step-text">Every call is checked against <code>sinks.yaml</code>; credentials are harvested in the same AST pass, and findings are ranked by severity.</p>
+        </article>
+        <article class="step-card reveal" data-delay="2">
+          <span class="step-num">3</span>
+          <h3 class="step-title">Triage and export</h3>
+          <p class="step-text">Mark status, group the results, open the source excerpt, then download the redacted JSON report.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt" id="rules">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">Rule set</p>
+        <h2 class="section-title">Seven sinks out of the box, one YAML file to extend.</h2>
+        <p class="section-lede">Rules are declared, not hard-coded. Add a callable, a category and an optional shell requirement — aliases are resolved for you.</p>
+      </div>
+      <div class="rule-list reveal">
+        <div class="rule-row"><span class="rule-name">eval</span><span class="tag is-crit">RCE</span><span class="rule-meta">Arbitrary expression evaluation</span></div>
+        <div class="rule-row"><span class="rule-name">exec</span><span class="tag is-crit">RCE</span><span class="rule-meta">Arbitrary statement execution</span></div>
+        <div class="rule-row"><span class="rule-name">compile</span><span class="tag is-crit">RCE</span><span class="rule-meta">Dangerous when paired with exec/eval</span></div>
+        <div class="rule-row"><span class="rule-name">os.system</span><span class="tag is-high">RCE</span><span class="rule-meta">Always runs through the system shell</span></div>
+        <div class="rule-row"><span class="rule-name">os.popen</span><span class="tag is-high">RCE</span><span class="rule-meta">Pipes a shell command</span></div>
+        <div class="rule-row"><span class="rule-name">subprocess.call</span><span class="tag is-high">RCE</span><span class="rule-meta">Flagged only with <code>shell=True</code></span></div>
+        <div class="rule-row"><span class="rule-name">pickle.loads</span><span class="tag is-med">DESER</span><span class="rule-meta">Code execution during deserialization</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="security-summary">
+    <div class="container">
+      <div class="section-head reveal">
+        <p class="kicker">Security posture</p>
+        <h2 class="section-title">A tool that finds secrets should not leak them.</h2>
+        <p class="section-lede">The console is loopback-only by design. Everything below is implemented, not aspirational — see the security page for the full threat model.</p>
+      </div>
+      <div class="cols cols-2">
+        <article class="panel reveal">
+          <span class="panel-icon"><svg aria-hidden="true"><use href="#i-lock"/></svg></span>
+          <h3 class="panel-title">Hardened HTTP surface</h3>
+          <p class="panel-text">Strict CSP with no inline script or style, <code>nosniff</code>, no referrer, COOP/CORP, a cross-origin write guard, a 2.5 MB body cap and per-route rate limits.</p>
+        </article>
+        <article class="panel reveal" data-delay="1">
+          <span class="panel-icon"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+          <h3 class="panel-title">Two-pass redaction</h3>
+          <p class="panel-text">The engine masks values it recognised; the reporter scrubs every text field again before serialization. The assistant sees eight whitelisted fields and no source bytes.</p>
+        </article>
+      </div>
+      <div class="cta-row">
+        <a class="btn btn-quiet" href="/security" data-tip="Full security model" data-tip-desc="Threat model, controls table and disclosure policy.">Read the security model <svg aria-hidden="true"><use href="#i-arrow"/></svg></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="container">
+      <div class="band-inner reveal">
+        <div>
+          <h2 class="band-title">Run it against something you own.</h2>
+          <p class="band-text">The console needs two commands and no build step. If you prefer the shell, the Python API gives you the same findings and the same redacted JSON.</p>
+        </div>
+        <div class="cta-row">
+          <a class="btn btn-primary btn-lg" href="/app" data-tip="Open the console" data-tip-desc="Load the sample target and run a scan in one click.">Open the console</a>
+          <a class="btn btn-quiet btn-lg" href="/docs#install" data-tip="Install" data-tip-desc="Virtualenv, requirements and the uvicorn command.">Installation</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-top">
+      <div class="footer-col">
+        <a class="nav-brand" href="/">
+          <span class="nav-logo"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+          <span class="nav-name"><strong>RedTeam<span class="accent">Linter</span></strong><small>Offensive SAST</small></span>
+        </a>
+        <p class="footer-blurb">Offensive static analysis for Python: AST sink detection, credential harvesting and a triaged report — with redaction enforced server-side.</p>
+      </div>
+      <div class="footer-col">
+        <h3 class="footer-title">Product</h3>
+        <ul>
+          <li><a class="footer-link" href="/app">Console</a></li>
+          <li><a class="footer-link" href="/#features">Features</a></li>
+          <li><a class="footer-link" href="/security">Security model</a></li>
+          <li><a class="footer-link" href="/changelog">Changelog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h3 class="footer-title">Documentation</h3>
+        <ul>
+          <li><a class="footer-link" href="/docs#install">Install</a></li>
+          <li><a class="footer-link" href="/docs#usage">Usage</a></li>
+          <li><a class="footer-link" href="/docs#rules">Rules</a></li>
+          <li><a class="footer-link" href="/docs#api">HTTP API</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h3 class="footer-title">Project</h3>
+        <ul>
+          <li><a class="footer-link" href="/about">About</a></li>
+          <li><a class="footer-link" href="https://github.com/HUMZAJAFFAR/redteam-linter" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+          <li><a class="footer-link" href="https://github.com/HUMZAJAFFAR/redteam-linter/blob/main/README.md" target="_blank" rel="noopener noreferrer">README</a></li>
+          <li><a class="footer-link" href="https://github.com/HUMZAJAFFAR/redteam-linter/issues" target="_blank" rel="noopener noreferrer">Issues</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span data-year>2026</span> RedTeam Linter · v0.2.0</span>
+      <span class="footer-note"><svg aria-hidden="true"><use href="#i-lock"/></svg> Redaction is enforced server-side; the browser never receives a raw secret.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="/shared/tooltip.js?v=1" defer></script>
+<script src="/site/site.js?v=1" defer></script>
+</body>
+</html>

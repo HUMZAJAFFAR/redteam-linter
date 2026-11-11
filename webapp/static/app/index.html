@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Console — RedTeam Linter</title>
+<meta name="description" content="Local console: scan Python for dangerous sinks and hardcoded credentials, triage the redacted findings, ask the assistant.">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#07080b">
+<meta name="robots" content="noindex">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/app/styles.css?v=6">
+<link rel="stylesheet" href="/shared/tooltip.css?v=1">
+</head>
+<body>
+<a class="skip-link" href="#views">Skip to content</a>
+
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 2.6v6.1c0 4.4-3 7.6-7 8.9-4-1.3-7-4.5-7-8.9V5.6L12 3z"/><circle cx="12" cy="11.4" r="2.1"/><path d="M12 13.5V17"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 012-2h2M20 8V6a2 2 0 00-2-2h-2M4 16v2a2 2 0 002 2h2M20 16v2a2 2 0 01-2 2h-2"/><path d="M8 12h8"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5z"/><path d="M4 20.5A2.5 2.5 0 016.5 18H20v3H6.5"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 4.9L19 9.8l-5.1 1.9L12 16.6l-1.9-4.9L5 9.8l5.1-1.9z"/><path d="M18 16l.8 2L21 18.8l-2.2.8L18 21.6l-.8-2L15 18.8l2.2-.8z"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 10a6 6 0 1112 0c0 3.2.7 5 1.5 6.2H4.5C5.3 15 6 13.2 6 10z"/><path d="M10 19.5a2.2 2.2 0 004 0"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m0 0l-4-4m4 4l4-4"/><path d="M4 18h16"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 5.5A1.5 1.5 0 0013.5 4H6a2 2 0 00-2 2v7.5A1.5 1.5 0 005.5 15"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4l9 16H3l9-16z"/><path d="M12 10v4"/><circle cx="12" cy="17" r=".6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="10" width="15" height="10" rx="2"/><path d="M8 10V7.5a4 4 0 018 0V10"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><path d="M9 7l-5 5 5 5M15 7l5 5-5 5"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12l16-7-6.5 16L11 14z"/><path d="M11 14l9-9"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v6"/><circle cx="12" cy="8" r=".8"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 10.6L12 4l8 6.6V20a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/></symbol>
+</svg>
+
+<div class="app">
+  <aside class="rail">
+    <a class="rail-brand" href="/" aria-label="RedTeam Linter website" data-tip="Back to the site" data-tip-desc="Landing page, docs and the security model.">
+      <span class="rail-mark"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+      <span class="rail-name"><strong>RedTeam<span class="accent">Linter</span></strong><small>Offensive SAST</small></span>
+    </a>
+
+    <nav class="nav" aria-label="Sections">
+      <button class="nav-item is-active" type="button" data-view="scan" aria-current="page" data-tip="Scan" data-tip-desc="Paste code or drop Python files and run the linter.">
+        <svg class="nav-icon" aria-hidden="true"><use href="#i-scan"/></svg>
+        <span class="nav-label">Scan</span>
+      </button>
+      <button class="nav-item" type="button" data-view="findings" data-tip="Findings" data-tip-desc="Filter, group and triage the redacted report.">
+        <svg class="nav-icon" aria-hidden="true"><use href="#i-list"/></svg>
+        <span class="nav-label">Findings</span>
+        <span class="nav-count" id="nav-findings-count" hidden>0</span>
+      </button>
+      <button class="nav-item" type="button" data-view="rules" data-tip="Rules" data-tip-desc="The sink table loaded from sinks.yaml.">
+        <svg class="nav-icon" aria-hidden="true"><use href="#i-book"/></svg>
+        <span class="nav-label">Rules</span>
+      </button>
+      <button class="nav-item" type="button" data-view="assistant" data-tip="Assistant" data-tip-desc="Ask about a finding, a sink or how the tool behaves.">
+        <svg class="nav-icon" aria-hidden="true"><use href="#i-spark"/></svg>
+        <span class="nav-label">Assistant</span>
+      </button>
+    </nav>
+
+    <div class="rail-foot">
+      <svg aria-hidden="true"><use href="#i-lock"/></svg>
+      <span>Redaction is server-side. The browser never receives a raw secret.</span>
+    </div>
+
+    <a class="rail-site" href="/docs" data-tip="Documentation" data-tip-desc="Install, usage, rules and the HTTP API.">
+      <svg aria-hidden="true"><use href="#i-book"/></svg><span>Docs</span>
+    </a>
+  </aside>
+
+  <div class="stage">
+    <header class="topbar">
+      <div class="topbar-title">
+        <h1 id="view-title">Scan</h1>
+        <p id="view-subtitle">Paste code or drop Python files, then run the linter.</p>
+      </div>
+      <div class="topbar-tools">
+        <span class="pill" id="engine-pill" data-tip="Engine status" data-tip-desc="Shows the active rule count and where the rules came from."><i class="pill-dot"></i><span id="engine-text">connecting…</span></span>
+        <button class="icon-btn bell" id="bell-btn" type="button" aria-label="Notifications" aria-expanded="false" aria-controls="notif-panel" data-tip="Notifications" data-tip-desc="Scans, triage changes, exports and assistant replies.">
+          <svg aria-hidden="true"><use href="#i-bell"/></svg>
+          <span class="bell-dot" id="bell-badge" hidden>0</span>
+        </button>
+        <button class="icon-btn" id="help-btn" type="button" aria-label="Keyboard shortcuts" data-tip="Keyboard shortcuts" data-tip-desc="Scan, switch views and filter without the mouse.">
+          <svg aria-hidden="true"><use href="#i-info"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="views" id="views">
+      <section class="view is-active" id="view-scan" aria-labelledby="view-title">
+        <div class="grid-2">
+          <article class="card">
+            <header class="card-head">
+              <div>
+                <h2 class="card-title">Target</h2>
+                <p class="card-sub">Python source only. Nothing is written to disk.</p>
+              </div>
+              <button class="btn btn-quiet" id="sample-btn" type="button" data-tip="Load the sample" data-tip-desc="Loads the bundled vulnerable fixture so you can try a scan immediately.">Load sample</button>
+            </header>
+
+            <div class="tabs" role="tablist" aria-label="Input mode">
+              <button class="tab is-active" id="tab-paste-btn" type="button" role="tab" aria-selected="true" aria-controls="pane-paste" data-pane="paste" data-tip="Paste code" data-tip-desc="Type or paste a single Python file.">Paste code</button>
+              <button class="tab" id="tab-upload-btn" type="button" role="tab" aria-selected="false" aria-controls="pane-upload" data-pane="upload" data-tip="Upload files" data-tip-desc="Drop up to 25 .py files, 2 MB total.">Upload files</button>
+            </div>
+
+            <div class="pane" id="pane-paste" role="tabpanel" aria-labelledby="tab-paste-btn">
+              <div class="field">
+                <label class="field-label" for="paste-name">Filename</label>
+                <input class="input mono" id="paste-name" value="target.py" spellcheck="false" autocomplete="off">
+              </div>
+              <div class="editor">
+                <div class="editor-bar">
+                  <span class="editor-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                  <span class="editor-name mono" id="editor-file">target.py</span>
+                  <span class="editor-lang">python</span>
+                </div>
+                <textarea class="editor-area mono" id="code" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Python source code" placeholder="def handler(request):&#10;    expr = request.args.get('expr')&#10;    eval(expr)"></textarea>
+                <div class="editor-foot"><span id="code-stats">0 lines · 0 B</span><span class="muted">ast + regex</span></div>
+              </div>
+            </div>
+
+            <div class="pane is-hidden" id="pane-upload" role="tabpanel" aria-labelledby="tab-upload-btn">
+              <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Choose Python files to scan" data-tip="Drop files" data-tip-desc="Click to browse, or drag .py files here.">
+                <svg class="dz-icon" aria-hidden="true"><use href="#i-upload"/></svg>
+                <strong class="dz-title">Drop .py files here</strong>
+                <span class="dz-hint">or <em>click to browse</em></span>
+                <small class="dz-meta">Up to 25 files · 2 MB total</small>
+                <input id="file-input" type="file" accept=".py,text/x-python" multiple hidden>
+              </div>
+              <ul class="filelist" id="filelist" aria-label="Selected files"></ul>
+            </div>
+
+            <div class="actions-row">
+              <button class="btn btn-primary" id="scan-btn" type="button" data-tip="Run scan — Ctrl+Enter" data-tip-desc="Parses the target and checks every call against the active sink rules.">
+                <svg class="btn-icon" aria-hidden="true"><use href="#i-scan"/></svg>
+                <span class="btn-label">Run scan</span>
+                <kbd class="btn-kbd">Ctrl ↵</kbd>
+              </button>
+              <button class="btn btn-ghost" id="clear-btn" type="button" data-tip="Clear target" data-tip-desc="Empties the editor and removes any uploaded files.">Clear</button>
+            </div>
+          </article>
+
+          <div class="side-stack">
+            <article class="card">
+              <header class="card-head">
+                <h2 class="card-title">Last result</h2>
+                <span class="badge" id="scan-badge">no scan yet</span>
+              </header>
+              <div class="summary-strip" id="summary-strip">
+                <button class="tile" type="button" data-sev="ALL" data-tip="All findings" data-tip-desc="Show every finding, whatever the severity."><span class="tile-label">Total</span><span class="tile-value" id="sum-total">0</span></button>
+                <button class="tile is-critical" type="button" data-sev="CRITICAL" data-tip="Critical" data-tip-desc="Dynamic execution or deserialization with user input reachable."><span class="tile-label"><i class="sev-dot"></i>Critical</span><span class="tile-value" id="sum-critical">0</span></button>
+                <button class="tile is-high" type="button" data-sev="HIGH" data-tip="High" data-tip-desc="Dangerous call with weaker evidence, or a hardcoded secret."><span class="tile-label"><i class="sev-dot"></i>High</span><span class="tile-value" id="sum-high">0</span></button>
+                <button class="tile is-medium" type="button" data-sev="MEDIUM" data-tip="Medium" data-tip-desc="Risky pattern with literals only, or a weaker credential match."><span class="tile-label"><i class="sev-dot"></i>Medium</span><span class="tile-value" id="sum-medium">0</span></button>
+                <button class="tile is-low" type="button" data-sev="LOW" data-tip="Low" data-tip-desc="Advisory findings, including parse errors."><span class="tile-label"><i class="sev-dot"></i>Low</span><span class="tile-value" id="sum-low">0</span></button>
+              </div>
+              <button class="btn btn-ghost btn-block" id="open-findings-btn" type="button" disabled data-tip="Review findings" data-tip-desc="Jump to the report with the current results.">Review findings</button>
+              <p class="meta-line" id="scan-meta">Run a scan to see counts, timing and the rule source.</p>
+            </article>
+
+            <article class="card">
+              <header class="card-head"><h2 class="card-title">This console</h2></header>
+              <ul class="facts">
+                <li><strong>AST, not grep.</strong> Only real call sites match, so comments and strings cannot produce noise.</li>
+                <li><strong>Redacted twice.</strong> The engine masks values, then the reporter scrubs every text field again.</li>
+                <li><strong>No state.</strong> Code is parsed in memory and discarded with the request.</li>
+              </ul>
+              <p class="note"><svg aria-hidden="true"><use href="#i-lock"/></svg><span><a href="/security">Security model</a> · <a href="/docs">Documentation</a></span></p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-findings" aria-labelledby="view-title">
+        <div class="toolbar">
+          <div class="chips" id="severity-filters" role="group" aria-label="Filter by severity">
+            <button class="chip is-active" type="button" data-sev="ALL">All <span class="chip-count">0</span></button>
+            <button class="chip" type="button" data-sev="CRITICAL">Critical <span class="chip-count">0</span></button>
+            <button class="chip" type="button" data-sev="HIGH">High <span class="chip-count">0</span></button>
+            <button class="chip" type="button" data-sev="MEDIUM">Medium <span class="chip-count">0</span></button>
+            <button class="chip" type="button" data-sev="LOW">Low <span class="chip-count">0</span></button>
+            <button class="chip" type="button" data-sev="INFO">Info <span class="chip-count">0</span></button>
+          </div>
+          <div class="toolbar-right">
+            <label class="search">
+              <svg aria-hidden="true"><use href="#i-search"/></svg>
+              <input id="search" type="search" placeholder="Filter findings…" aria-label="Filter findings" autocomplete="off">
+              <kbd>/</kbd>
+            </label>
+            <label class="select-wrap">
+              <span class="sr-only">Sort findings</span>
+              <select class="select" id="sort-select">
+                <option value="severity">Sort: severity</option>
+                <option value="location">Sort: location</option>
+                <option value="sink">Sort: sink</option>
+              </select>
+            </label>
+            <button class="btn btn-ghost" id="copy-btn" type="button" disabled data-tip="Copy JSON" data-tip-desc="Copies the redacted report payload to the clipboard.">
+              <svg class="btn-icon" aria-hidden="true"><use href="#i-copy"/></svg><span>Copy JSON</span>
+            </button>
+            <button class="btn btn-ghost" id="export-btn" type="button" disabled data-tip="Export JSON" data-tip-desc="Downloads the redacted report, same structure as the CLI export.">
+              <svg class="btn-icon" aria-hidden="true"><use href="#i-download"/></svg><span>Export</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="toolbar toolbar-sub">
+          <div class="segmented" id="group-toggle" role="group" aria-label="Group findings">
+            <button class="seg-btn is-active" type="button" data-group="none" data-tip="Table" data-tip-desc="One flat, sortable table.">Table</button>
+            <button class="seg-btn" type="button" data-group="file" data-tip="By file" data-tip-desc="Group findings under the file they came from.">By file</button>
+            <button class="seg-btn" type="button" data-group="severity" data-tip="By severity" data-tip-desc="Group findings into severity buckets.">By severity</button>
+          </div>
+          <div class="chips chips-soft" id="triage-filters" role="group" aria-label="Filter by triage status">
+            <button class="chip is-active" type="button" data-triage="all">Any status</button>
+            <button class="chip" type="button" data-triage="open">Open</button>
+            <button class="chip" type="button" data-triage="confirmed">Confirmed</button>
+            <button class="chip" type="button" data-triage="false-positive">False positive</button>
+            <button class="chip" type="button" data-triage="fixed">Fixed</button>
+          </div>
+        </div>
+
+        <article class="card card-flush">
+          <header class="card-head card-head-inline">
+            <div>
+              <h2 class="card-title">Findings <span class="pill-count" id="findings-count">0</span></h2>
+              <p class="card-sub" id="results-sub">No scan data yet.</p>
+            </div>
+            <span class="rule-source mono" id="rule-source"></span>
+          </header>
+
+          <div class="table-shell" id="table-wrap" aria-live="polite">
+            <table class="findings" id="findings-table">
+              <thead>
+                <tr>
+                  <th scope="col" class="col-status"><span class="sr-only">Triage status</span></th>
+                  <th scope="col" class="col-sev">Severity</th>
+                  <th scope="col" class="col-sink">Sink</th>
+                  <th scope="col" class="col-cat">Category</th>
+                  <th scope="col" class="col-loc">Location</th>
+                  <th scope="col" class="col-ev">Evidence</th>
+                  <th scope="col" class="col-go"><span class="sr-only">Open</span></th>
+                </tr>
+              </thead>
+              <tbody id="findings-body"></tbody>
+            </table>
+
+            <div class="group-list" id="grouped-view" hidden></div>
+
+            <div class="state" id="empty-state">
+              <span class="state-icon"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+              <h3>No scan data yet</h3>
+              <p>Paste vulnerable code or upload files in Scan, then run the linter. Results show severity, sink, taint signal and the redacted source line.</p>
+            </div>
+
+            <div class="state" id="clean-state" hidden>
+              <span class="state-icon ok"><svg aria-hidden="true"><use href="#i-check"/></svg></span>
+              <h3>No findings</h3>
+              <p>Nothing matched the active sink rules or credential patterns. That is not proof of safety — extend <code>sinks.yaml</code> for deeper coverage.</p>
+            </div>
+
+            <div class="state" id="no-match-state" hidden>
+              <span class="state-icon"><svg aria-hidden="true"><use href="#i-search"/></svg></span>
+              <h3>No findings match</h3>
+              <p>Loosen the severity, triage or text filter to see the rest of the report.</p>
+              <button class="btn btn-ghost" id="reset-filters" type="button" data-tip="Reset filters" data-tip-desc="Clears severity, triage, search and sorting.">Reset filters</button>
+            </div>
+
+            <div class="state state-loading" id="loading-state" hidden>
+              <div class="loading-head"><span class="spinner" aria-hidden="true"></span><span id="loading-text">Parsing AST…</span></div>
+              <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+            </div>
+          </div>
+
+          <footer class="card-foot"><span id="result-meta">Ready.</span><span class="mono" id="result-timing"></span></footer>
+        </article>
+      </section>
+
+      <section class="view" id="view-rules" aria-labelledby="view-title">
+        <article class="card">
+          <header class="card-head">
+            <div>
+              <h2 class="card-title">Sink rules <span class="pill-count" id="rules-total">0</span></h2>
+              <p class="card-sub">What the analyzer will flag, loaded from <code>sinks.yaml</code> at startup.</p>
+            </div>
+            <span class="badge" id="rules-source">—</span>
+          </header>
+          <div class="rules-grid" id="rules-grid"></div>
+          <p class="note"><svg aria-hidden="true"><use href="#i-info"/></svg><span>Add a rule by copying a block in <code>sinks.yaml</code> and restarting the server. An invalid file falls back to the built-in table instead of breaking a scan.</span></p>
+        </article>
+      </section>
+
+      <section class="view" id="view-assistant" aria-labelledby="view-title">
+        <article class="card card-chat">
+          <header class="card-head">
+            <div>
+              <h2 class="card-title">Assistant <span class="badge" id="assistant-mode">local</span></h2>
+              <p class="card-sub" id="assistant-disclaimer">Explains findings from the redacted report.</p>
+            </div>
+          </header>
+
+          <div class="chat-log" id="chat-log" role="log" aria-live="polite"></div>
+
+          <div class="chat-context" id="chat-context" hidden>
+            <svg aria-hidden="true"><use href="#i-file"/></svg>
+            <span class="mono" id="chat-context-text"></span>
+            <button class="icon-btn icon-btn-sm" id="chat-context-clear" type="button" aria-label="Remove finding context" data-tip="Remove context" data-tip-desc="Detaches the finding from your next question.">
+              <svg aria-hidden="true"><use href="#i-close"/></svg>
+            </button>
+          </div>
+
+          <div class="suggestions" id="chat-suggestions">
+            <button class="suggestion" type="button" data-tip="What is a sink?" data-tip-desc="Explains which calls are dangerous and why.">What is a dangerous sink?</button>
+            <button class="suggestion" type="button" data-tip="Redaction" data-tip-desc="How masking works and what the browser never sees.">How does redaction work?</button>
+            <button class="suggestion" type="button" data-tip="Taint bridge" data-tip-desc="Why arguments_passed is not masked.">What does arguments_passed mean?</button>
+            <button class="suggestion" type="button" data-tip="Triage" data-tip-desc="How to work through a report without drowning.">How should I triage findings?</button>
+          </div>
+
+          <form class="chat-form" id="chat-form" autocomplete="off">
+            <textarea class="chat-input mono" id="chat-input" rows="2" placeholder="Ask about a finding, a sink, redaction, triage or rules…" aria-label="Ask the assistant"></textarea>
+            <button class="btn btn-primary btn-icon-only" id="chat-send" type="submit" aria-label="Send question" data-tip="Send — Enter" data-tip-desc="Shift+Enter adds a new line.">
+              <svg aria-hidden="true"><use href="#i-send"/></svg>
+            </button>
+          </form>
+          <p class="meta-line">Only redacted fields are sent. If a model key is configured it stays on the server; otherwise answers come from the local catalogue.</p>
+        </article>
+      </section>
+
+      <section class="view" id="view-notfound" aria-labelledby="view-title">
+        <div class="notfound">
+          <span class="state-icon"><svg aria-hidden="true"><use href="#i-alert"/></svg></span>
+          <h2>That view does not exist</h2>
+          <p>The console has four views: Scan, Findings, Rules and Assistant.</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" type="button" data-goto="scan">Go to Scan</button>
+            <a class="btn btn-ghost" href="/">Back to the site</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-brand">
+        <span class="rail-mark"><svg aria-hidden="true"><use href="#i-shield"/></svg></span>
+        <div>
+          <strong>RedTeam<span class="accent">Linter</span></strong>
+          <span class="footer-version mono" id="footer-version">v0.2.0</span>
+        </div>
+      </div>
+      <nav class="footer-links" aria-label="Footer">
+        <a class="footer-link" href="/" data-tip="Website" data-tip-desc="Landing page and product overview.">Home</a>
+        <a class="footer-link" href="/docs">Docs</a>
+        <a class="footer-link" href="/security">Security</a>
+        <a class="footer-link" href="https://github.com/HUMZAJAFFAR/redteam-linter" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </nav>
+      <p class="footer-note">Redaction is enforced server-side; the browser never receives a raw secret.</p>
+    </footer>
+  </div>
+</div>
+
+<div class="sheet-backdrop" id="detail-backdrop" hidden></div>
+<aside class="sheet" id="detail" role="dialog" aria-modal="true" aria-labelledby="detail-title" aria-hidden="true">
+  <header class="sheet-head">
+    <div class="sheet-heading">
+      <h3 class="sheet-title" id="detail-title">Finding</h3>
+      <p class="sheet-sub mono" id="detail-sub"></p>
+    </div>
+    <button class="icon-btn" id="detail-close" type="button" aria-label="Close details" data-tip="Close — Esc" data-tip-desc="Hides the detail panel.">
+      <svg aria-hidden="true"><use href="#i-close"/></svg>
+    </button>
+  </header>
+  <div class="sheet-body" id="detail-body"></div>
+</aside>
+
+<div class="popover" id="notif-panel" role="dialog" aria-label="Notifications" hidden>
+  <header class="pop-head">
+    <strong>Notifications</strong>
+    <div class="pop-head-actions">
+      <button class="btn btn-quiet btn-xs" id="notif-mark-read" type="button">Mark all read</button>
+      <button class="btn btn-quiet btn-xs" id="notif-clear" type="button">Clear</button>
+    </div>
+  </header>
+  <ul class="pop-list" id="notif-list"></ul>
+  <p class="pop-empty" id="notif-empty">Nothing yet. Scan results, exports, triage changes and assistant replies land here.</p>
+</div>
+
+<dialog class="help" id="help-dialog" aria-labelledby="help-title">
+  <header class="help-head">
+    <h2 id="help-title">Keyboard shortcuts</h2>
+    <button class="icon-btn" id="help-close" type="button" aria-label="Close help">
+      <svg aria-hidden="true"><use href="#i-close"/></svg>
+    </button>
+  </header>
+  <dl class="help-grid">
+    <div class="help-row"><dt><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd></dt><dd>Run a scan</dd></div>
+    <div class="help-row"><dt><kbd>Alt</kbd> + <kbd>1…4</kbd></dt><dd>Switch view</dd></div>
+    <div class="help-row"><dt><kbd>/</kbd></dt><dd>Focus the findings filter</dd></div>
+    <div class="help-row"><dt><kbd>t</kbd></dt><dd>Cycle grouping (table · file · severity)</dd></div>
+    <div class="help-row"><dt><kbd>Esc</kbd></dt><dd>Close the detail panel or notification centre</dd></div>
+  </dl>
+</dialog>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+<noscript><p class="noscript">The console needs JavaScript. The CLI and JSON export work without it.</p></noscript>
+
+<script src="/shared/tooltip.js?v=1" defer></script>
+<script src="/app/app.js?v=6" defer></script>
+</body>
+</html>
