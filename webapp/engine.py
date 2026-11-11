@@ -180,8 +180,9 @@ def scan_secrets(source: str) -> List[Dict[str, Any]]:
     """
     severity_rank = {name: index for index, name in enumerate(SEVERITY_LADDER)}
     best_per_line: Dict[int, Dict[str, Any]] = {}
+    source_lines = source.splitlines()
 
-    for lineno, raw_line in enumerate(source.splitlines(), start=1):
+    for lineno, raw_line in enumerate(source_lines, start=1):
         line = raw_line.rstrip("\n")
         for pattern in SECRET_PATTERNS:
             for match in pattern["regex"].finditer(line):
@@ -202,6 +203,7 @@ def scan_secrets(source: str) -> List[Dict[str, Any]]:
                         f"{pattern['label']} hardcoded in source. Rotate the credential and "
                         "move it to a secret store."
                     ),
+                    "source_context": source_excerpt(source_lines, lineno),
                 }
                 current = best_per_line.get(lineno)
                 if current is None or severity_rank[candidate["severity"]] > severity_rank[
@@ -214,10 +216,73 @@ def scan_secrets(source: str) -> List[Dict[str, Any]]:
 
 
 def mask_secrets_in_text(text: str) -> str:
-    """Best-effort masking used on ``arguments_passed`` literals."""
+    """Best-effort masking used on ``arguments_passed`` and source excerpts.
+
+    Only the credential *value* is replaced, never the whole match, so masking
+    ``GITHUB_TOKEN = "ghp_..."`` keeps the key name readable instead of
+    collapsing the line to ``GITHUB_<redacted>``.
+    """
     for pattern in SECRET_PATTERNS:
-        text = pattern["regex"].sub("<redacted>", text)
+        regex = pattern["regex"]
+
+        def replace(match: "re.Match[str]", regex: "re.Pattern[str]" = regex) -> str:
+            if not regex.groups:
+                return "<redacted>"
+            index = match.lastindex or regex.groups
+            start, end = match.span(index)
+            whole = match.group(0)
+            head = whole[: start - match.start()]
+            tail = whole[end - match.start() :]
+            return f"{head}<redacted>{tail}"
+
+        text = regex.sub(replace, text)
     return text
+
+
+def _mask_assignment(match: "re.Match[str]") -> str:
+    """Replace the literal in ``PASSWORD = "..."``, leaving the name intact."""
+    value = match.group("value")
+    if value.startswith("<") or "REDACTED" in value.upper():
+        return match.group(0)
+    return "{key}{quote}<redacted>{quote}".format(
+        key=match.group("key"), quote=match.group("quote")
+    )
+
+
+_SENSITIVE_ASSIGNMENT = re.compile(
+    r"(?i)(?P<key>(?:api[_-]?key|secret|token|password|passwd|pwd)[A-Za-z0-9_]*\s*[=:]\s*)"
+    r"(?P<quote>['\"])(?P<value>[^'\"\s]{6,})(?P=quote)"
+)
+
+
+def scrub_source_line(text: str) -> str:
+    """Mask credential material inside one source line, keeping its structure.
+
+    The console renders a redacted excerpt around each finding.  Masking the
+    *value* instead of the whole line keeps ``DB_PASSWORD = "<redacted>"``
+    readable without shipping the secret to the browser.
+    """
+    scrubbed = mask_secrets_in_text(text)
+    scrubbed = _SENSITIVE_ASSIGNMENT.sub(_mask_assignment, scrubbed)
+    return scrubbed.expandtabs(2).rstrip()[:200]
+
+
+def source_excerpt(
+    lines: Sequence[str], line_number: int, radius: int = 2
+) -> List[Dict[str, Any]]:
+    """Return a redacted context window around ``line_number`` (1-indexed)."""
+    if not lines or line_number < 1:
+        return []
+    start = max(1, line_number - radius)
+    end = min(len(lines), line_number + radius)
+    return [
+        {
+            "line": number,
+            "text": scrub_source_line(lines[number - 1]),
+            "target": number == line_number,
+        }
+        for number in range(start, end + 1)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -372,6 +437,9 @@ def scan_python(source: str, file_path: str, rules: Sequence[Dict[str, Any]]) ->
                 "secret_value": "",
                 "arguments_passed": [],
                 "description": f"File skipped: {exc.msg}.",
+                "source_context": source_excerpt(
+                    source.splitlines(), int(exc.lineno or 0)
+                ),
             }
         ]
 
@@ -443,6 +511,7 @@ def scan_python(source: str, file_path: str, rules: Sequence[Dict[str, Any]]) ->
                 "requires_shell_true": bool(rule.get("requires_shell_true")),
                 "shell_true_present": shell_true,
                 "description": " ".join(notes),
+                "source_context": source_excerpt(lines, int(node.lineno)),
             }
         )
 

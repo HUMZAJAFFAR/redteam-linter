@@ -1,12 +1,14 @@
 # RedTeam Linter
 
-**Offensive-oriented static analysis for Python — dangerous-sink detection, secret harvesting, and a dark web console, with redaction enforced on the way out.**
+**Offensive-oriented static analysis for Python — AST sink detection, secret harvesting, a triaged browser console and a built-in assistant, with redaction enforced on the way out.**
 
-RedTeam Linter parses Python source with `ast`, flags calls to dangerous sinks (`eval`, `exec`, `compile`, `os.system`, `subprocess.call`, `pickle.loads`, …) plus hard-coded credentials, and reports them through a severity-ranked terminal report, a JSON artifact, or an interactive browser console.
+RedTeam Linter parses Python with `ast`, flags calls to dangerous sinks (`eval`, `exec`, `compile`, `os.system`, `subprocess.call(shell=True)`, `pickle.loads`, …) plus hardcoded credentials, and presents them through a severity-ranked terminal report, a deterministic JSON artifact, or a four-view web console.
 
-Every finding is redacted **before** it is printed or serialized: raw secrets and raw matched source lines never reach your terminal, your JSON file, or your browser devtools. The underlying finding keeps the original bytes in memory so taint analysis can still reason about them.
+Every finding is redacted **before** it is printed, serialized or sent to the browser. Raw secrets and raw matched lines never reach your terminal, your JSON export, devtools, or the assistant.
 
-![RedTeam Linter console](docs/screenshot.png)
+![Findings view — 11 findings, masked evidence, triage rails](docs/screenshot.png)
+
+![Finding detail — masked source excerpt with the flagged line highlighted](docs/screenshot-detail.png)
 
 ---
 
@@ -17,73 +19,77 @@ Every finding is redacted **before** it is printed or serialized: raw secrets an
 - [Architecture](#architecture)
 - [Install](#install)
 - [Quick start](#quick-start)
-  - [Web console](#web-console)
-  - [Python API](#python-api)
+- [Console guide](#console-guide)
+- [Assistant](#assistant)
+- [Security model](#security-model)
 - [Rule configuration (`sinks.yaml`)](#rule-configuration-sinksyaml)
-- [Output & redaction model](#output--redaction-model)
+- [Output & redaction](#output--redaction)
 - [HTTP API](#http-api)
 - [Test target & expected results](#test-target--expected-results)
+- [Configuration reference](#configuration-reference)
 - [Project layout](#project-layout)
-- [Design constraints](#design-constraints)
 - [Limitations](#limitations)
 
 ---
 
 ## Why it exists
 
-Most Python linters check style; most SAST tools are heavy, noisy, or SaaS. RedTeam Linter is a small, dependency-light tool you can read end to end in an afternoon, aimed at the offensive/audit workflow:
+Most Python linters check style; most SAST tools are heavy, noisy or SaaS. This is a small tool you can read end to end in an afternoon, built for the offensive/audit workflow:
 
-1. Drop in a target codebase (or a single file you found during an engagement).
-2. Get the risky call sites ranked, with the exact line and the argument expression that flows into the sink.
-3. Review the same results in a UI without a build step, then export a JSON report that is safe to attach to a writeup.
+1. Drop in a target file or a handful of files.
+2. Get the risky call sites ranked, with the line and the argument expression that flows into the sink.
+3. Triage them in a UI that needs no build step, then export a report that is safe to attach to a writeup.
 
-The project intentionally separates **harvesting**, **analysis**, **reporting**, and **presentation**, so any layer can be replaced without touching the others.
+Harvesting, analysis, reporting and presentation are separate layers, so any one can be replaced without touching the others.
 
 ## Features
 
 **Detection**
 
-- AST-based sink matching — no regex guessing on source text, so comments, strings and docstrings cannot produce false positives.
-- Import-alias resolution: `from os import system as sh` and `import subprocess as sp` are still resolved to `os.system` / `subprocess.call`.
-- Context-aware `shell=True` handling: `subprocess.call(["ls", "-l"])` is clean, `subprocess.call(cmd, shell=True)` is `HIGH`.
-- Severity per category (`CRITICAL` for dynamic execution/deserialization, `HIGH` for secret hits and shell exec, `MEDIUM` for weaker credential patterns).
-- Secret patterns: AWS access key IDs, GitHub tokens, Slack tokens, PEM private keys, JWTs, bearer tokens, and generic `password`/`api_key`/`secret`-style assignments.
-- Placeholder filtering, so `password = "changeme"`, `api_key = "<your-key>"` and `secret = "example"` do not become findings.
-- Syntax-error input produces a single `INFO` parse finding instead of crashing the scan.
-- Non-Python files are skipped and reported as skipped, not silently dropped.
+- AST-based sink matching — comments, docstrings and string literals cannot produce false positives.
+- Import-alias resolution: `from os import system as sh` and `import subprocess as sp` still resolve to the canonical rule name.
+- `shell=True` awareness: `subprocess.call(["ls", "-l"])` is clean, `subprocess.call(cmd, shell=True)` is `HIGH`.
+- Taint heuristic: arguments that trace to request/argv/input-style sources are marked `user_input_reachable` and escalated to `CRITICAL`.
+- Secret patterns: AWS access key IDs, GitHub tokens, Slack tokens, PEM private keys, JWTs, bearer tokens and generic `password`/`api_key`-style assignments, with placeholder filtering.
+- Syntax errors become a single `INFO` finding instead of a crash; non-Python files are reported as skipped.
 
-**Reporting**
+**Console** (vanilla HTML/CSS/JS, no build step)
 
-- Rich terminal report: severity-coloured table, per-severity summary panel, one row per finding.
-- Deterministic JSON report (`summary` + `findings`) identical between CLI and web export.
-- Strict output-side redaction (`AKIA…` → `AKIA***REDACTED***`).
+- Four views — **Scan**, **Findings**, **Rules**, **Assistant** — behind a hash router.
+- Findings table with severity chips, status chips, free-text filter, sort control, and grouping by file or by severity.
+- Detail sheet: triage status, why it matters, masked evidence, `arguments_passed`, a redacted source excerpt with the flagged line highlighted, metadata, copy-finding, ask-assistant.
+- Triage status per finding (Open / Confirmed / False positive / Fixed), persisted in the browser.
+- Notification centre with unread badge for scans, triage changes, exports, assistant replies and failures.
+- Rule inspector showing exactly what was loaded from `sinks.yaml`.
+- Keyboard: <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd> scan, <kbd>Alt</kbd>+<kbd>1…4</kbd> switch view, <kbd>/</kbd> filter, <kbd>t</kbd> cycle grouping, <kbd>Esc</kbd> close.
+- Responsive from wide desktop down to tablet; no horizontal page scroll.
+- All rendering uses DOM APIs and `textContent` — a hostile snippet cannot become markup.
 
-**Web console** (vanilla HTML/CSS/JS, no build step)
+**Assistant**
 
-- Paste-code and drag-and-drop-file tabs, up to 25 files / 2 MB total.
-- Stat cards (total / critical / high / medium / low), severity filter chips with counts, free-text filter, sticky findings table.
-- Detail drawer per finding: description, location, masked evidence, **`arguments_passed`** (the taint bridge), and the redacted raw finding JSON.
-- Rule inspector driven by `GET /api/rules`, showing the active rule source (`sinks.yaml` vs. built-in fallback).
-- Copy JSON, one-click redacted report download, skeleton loading state, toasts, live health pill.
-- Keyboard: <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>Enter</kbd> scan, <kbd>/</kbd> filter, <kbd>Esc</kbd> close drawer.
-- All rendering uses `textContent` — a malicious snippet cannot inject markup into the page.
+- Works with **zero configuration**: a deterministic knowledge base explains sinks, severity, redaction, taint, triage and rules offline.
+- Optional **LLM mode** through any OpenAI-compatible endpoint, called server-side only; the key never reaches the browser.
+- The assistant receives a whitelisted, already-redacted finding — never source bytes, `matched_snippet` or `secret_value` — and falls back to the local answer if the provider fails.
 
 ## Architecture
 
 ```
-samples/*.py ─┐
-              ├─► webapp/engine.py ──► findings[] ──► reporter.ReportGenerator ──► terminal / JSON / browser
-uploads ──────┘        (AST)                                (redaction boundary)
-                            ▲
-                     sinks.yaml (config_loader)
+samples/*.py ─┐                       ┌──► reporter.ReportGenerator ──► terminal / JSON
+              ├─► webapp/engine.py ───┤        (redaction boundary)
+uploads ──────┘        (AST)          └──► webapp/server.py ──► redacted payload ──► browser
+                            ▲                                          │
+                     sinks.yaml (config_loader)                        └──► webapp/assistant.py
+                                                                              (local KB or LLM)
 ```
 
 | Layer | File | Responsibility |
 | --- | --- | --- |
-| Rules | `sinks.yaml`, `config_loader.py` | Declarative sink table, validated and loaded with a built-in fallback. |
-| Analysis | `webapp/engine.py` | Parses source, resolves imports, walks `ast.Call` nodes, matches sinks (incl. `shell=True`), harvests secrets, computes the taint heuristic. |
-| Reporting | `reporter.py` | Single enforcement point for redaction, severity ordering, terminal and JSON rendering. |
-| Presentation | `webapp/server.py`, `webapp/static/*` | FastAPI routes + the single-page console. |
+| Rules | `sinks.yaml`, `config_loader.py` | Declarative sink table, validated, with a built-in fallback. |
+| Analysis | `webapp/engine.py` | Parse, resolve aliases, match sinks, harvest secrets, build the redacted source excerpt. |
+| Reporting | `reporter.py` | Single redaction enforcement point, severity ordering, terminal + JSON. |
+| Presentation | `webapp/server.py`, `webapp/static/*` | FastAPI routes plus the four-view console. |
+| Assistant | `webapp/assistant.py` | Local remediation knowledge base, optional OpenAI-compatible call. |
+| Hardening | `webapp/security.py` | CSP and headers, origin guard, body cap, rate limiting. |
 
 ## Install
 
@@ -98,7 +104,7 @@ python3 -m venv .venv
 pip install -r requirements.txt
 ```
 
-`rich` and `PyYAML` are needed for the report/rules; `fastapi` + `uvicorn` are only needed for the web console.
+`rich` and `PyYAML` cover reporting and rules; `fastapi` + `uvicorn` are only needed for the console.
 
 ## Quick start
 
@@ -109,16 +115,16 @@ pip install -r requirements.txt
 # open http://127.0.0.1:8000
 ```
 
-Then either paste code, drag in `.py` files, or click **Load sample** for the embedded demo target. A known-vulnerable fixture is also served for testing:
-
-```bash
-curl -s http://127.0.0.1:8000/samples/vulnerable_target.py -o target.py
-```
-
-Equivalent one-liner without uvicorn:
+Or the equivalent entry point (also suppresses the server banner):
 
 ```bash
 .venv/bin/python webapp/server.py
+```
+
+Click **Load sample** to scan the bundled fixture, or fetch it first:
+
+```bash
+curl -s http://127.0.0.1:8000/samples/vulnerable_target.py -o target.py
 ```
 
 ### Python API
@@ -136,34 +142,72 @@ findings, scanned, skipped = scan_files(
 )
 
 generator = ReportGenerator(findings, files_scanned=len(scanned))
-generator.print_report()                    # redacted terminal table
+generator.print_report()                          # redacted terminal table
 generator.export_to_json("redteam-report.json")   # redacted JSON artifact
 ```
 
-A finding looks like this (after redaction):
+## Console guide
 
-```json
-{
-  "file_path": "samples/vulnerable_target.py",
-  "line_number": 32,
-  "severity": "CRITICAL",
-  "category": "RCE",
-  "sink": "eval",
-  "matched_snippet": "retu***REDACTED***",
-  "secret_value": "",
-  "arguments_passed": ["expression"],
-  "description": "Remote code execution sink: attacker-controlled input here means code execution.",
-  "user_input_reachable": true
-}
+| View | What it does |
+| --- | --- |
+| **Scan** | Paste code or drop up to 25 `.py` files (2 MB total), run the scan, see the summary tiles and timing. |
+| **Findings** | Filter by severity, triage status and free text; sort by severity/location/sink; switch between table, by-file and by-severity grouping; open any finding. |
+| **Rules** | The active sink table, grouped as cards, with the rule source (`sinks.yaml` or the built-in fallback). |
+| **Assistant** | Ask about a sink, redaction, triage or rules — optionally with a finding attached as context. |
+
+**Triage.** Each finding is keyed by `file:line:sink` and marked Open, Confirmed, False positive or Fixed. Status lives in `localStorage` under `redteam.triage.v1`, so it survives a reload while the server keeps no state.
+
+**Notifications.** Scans, triage changes, exports, assistant replies and errors are recorded in the bell menu (`redteam.notif.v1`, last 60 events). Opening the panel marks everything read; the badge tracks the unread count.
+
+## Assistant
+
+Two modes behind one endpoint:
+
+| Mode | When | Behaviour |
+| --- | --- | --- |
+| **local** (default) | No API key configured | Deterministic answers from a remediation catalogue (per-sink fix steps, category explanations, triage/redaction guidance). Instant, offline, no cost. |
+| **llm** (opt-in) | `REDTEAM_AI_KEY`, `ZAI_API_KEY` or `OPENAI_API_KEY` is set | The question plus a whitelisted finding summary is sent to an OpenAI-compatible `/chat/completions` endpoint from the server. On any provider error the response degrades to the local answer and says so. |
+
+The browser only ever calls `/api/assistant` on this server. The key stays in the process, never in a response, a log line or the page. The finding context is projected onto eight fields — `file_path`, `line_number`, `severity`, `category`, `sink`, `description`, `user_input_reachable`, `shell_true_present` — so snippets and secret values are structurally unavailable to the model.
+
+```bash
+# local mode (no key)
+curl -s -X POST http://127.0.0.1:8000/api/assistant \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"How does redaction work?"}'
+
+# opt in to an OpenAI-compatible provider
+export REDTEAM_AI_KEY=…            # never commit this
+export REDTEAM_AI_BASE=https://api.z.ai/api/paas/v4
+export REDTEAM_AI_MODEL=glm-4-flash
 ```
+
+## Security model
+
+The console is a **local review tool**: bind it to `127.0.0.1`. The threat model is another page in the same browser trying to drive it, a hostile payload trying to exhaust it, a template bug turning data into script, and a leak of the very secrets the tool is meant to find.
+
+| Control | Implementation |
+| --- | --- |
+| Strict CSP | `default-src 'self'`; no inline script, no inline style, no objects, no frames, `base-uri 'none'`, `form-action 'none'`. Every style lives in `styles.css`. |
+| MIME sniffing | `X-Content-Type-Options: nosniff` on every response. |
+| Clickjacking | `frame-ancestors 'self'` by default, widenable with `REDTEAM_FRAME_ANCESTORS` for a hosted preview. |
+| Cross-origin requests | State-changing requests whose `Origin` does not match `Host` are rejected with `403`. |
+| Memory exhaustion | Bodies over `REDTEAM_MAX_BODY_BYTES` (2.5 MB) are rejected with `413` before buffering, including chunked uploads without a length header. |
+| Abuse | Sliding-window limits per client: assistant 20/min, scan 40/min, report 20/min, `/api` 120/min, with `429` + `Retry-After`. |
+| Caching | `Cache-Control: no-store` on all `/api` responses. |
+| API surface | `/docs`, `/redoc` and `/openapi.json` are disabled; the server banner is suppressed by the built-in runner. |
+| XSS | Findings, source excerpts, chat replies and notifications are rendered with `textContent`/DOM builders, never `innerHTML`. |
+| Secret exposure | Redaction happens in `reporter.ReportGenerator`; source excerpts get a second scrub pass; the assistant never receives snippets or secret values. |
+| Path handling | Submitted paths are normalised, `..`/empty segments stripped, `.py` enforced, duplicates suffixed. |
+| Stored data | `localStorage` holds triage status and notification text only — no code, no findings, no secrets. |
+
+This is defence in depth, not a formal audit. Run `pip install -r requirements.txt` in a fresh virtualenv, keep the tool bound to loopback, and review `webapp/security.py` if you deploy it behind a proxy.
 
 ## Rule configuration (`sinks.yaml`)
 
-Rules live in `sinks.yaml` and are loaded by `config_loader.load_sink_config()`. If the file is missing or invalid, the loader returns the built-in baseline table and the UI reports the source as `built-in fallback` — a broken config degrades, it never crashes a scan.
-
 ```yaml
 sinks:
-  - name: "subprocess.call"       # required: callable exactly as written in source
+  - name: "subprocess.call"       # required: callable as written in source
     category: "RCE"               # free-form taint family
     requires_shell_true: true     # only dangerous when shell=True is passed
     description: "Safe with a list and shell=False; flagged when shell=True."
@@ -171,60 +215,48 @@ sinks:
 
 | Key | Type | Required | Meaning |
 | --- | --- | --- | --- |
-| `name` | str | yes | Fully-qualified callable (`os.system`) or bare name (`eval`). Aliases are resolved by the analyzer, not duplicated here. |
+| `name` | str | yes | Fully-qualified callable (`os.system`) or bare name (`eval`). Aliases are resolved by the analyzer. |
 | `category` | str | no | Taint family shown in the report (`RCE`, `DESERIALIZATION`, `SECRET`, …). |
 | `requires_shell_true` | bool | no | When `true`, the call is only flagged if `shell=True` is present. |
-| `severity`, `cwe`, `remediation`, `description` | any | no | Carried through untouched for reporting/annotation. |
+| `severity`, `cwe`, `remediation`, `description` | any | no | Carried through untouched for reporting. |
 
-Add a rule by copying a block, then validate the file:
+If the file is missing or invalid the loader returns the built-in table and the UI reports `built-in fallback` — a broken config degrades, it never breaks a scan. Validate after editing:
 
 ```bash
 python -c "import yaml; yaml.safe_load(open('sinks.yaml'))"
 ```
 
-## Output & redaction model
+## Output & redaction
 
-Redaction is **output-side only**, and it is enforced in exactly one place: `reporter.ReportGenerator`.
+Redaction is **output-side only**, enforced in one place: `reporter.ReportGenerator`.
 
 - Raw matched lines and secret values are scrubbed at any nesting depth before display or serialization.
-- Only the first four characters of a sensitive value survive (`AKIA***REDACTED***`, `DB_P***REDACTED***`), which is enough to recognise a key and useless to an attacker.
-- `arguments_passed` is **deliberately not redacted**: it is the bridge for taint tracing and carries structural data (`"'ping -c 1 ' + host"`), not credential material. It is truncated to 160 characters.
-- The web server builds its payload through the same generator, so the browser can only ever receive redacted findings — nothing sensitive is available in devtools, a saved page, or the exported report.
+- Only the first four characters of a sensitive value survive (`AKIA***REDACTED***`), enough to correlate a finding with a file, useless to an attacker.
+- The source excerpt is masked at the **value**, not the whole line, so `DB_PASSWORD = "<redacted>"` stays readable. The reporter runs a second scrub pass over those excerpts before they are served.
+- `arguments_passed` is deliberately **not** redacted: it is the taint-analysis bridge and carries structure (`"'ping -c 1 ' + host"`), not credential material. It is truncated to 160 characters.
+- The console payload is built through the same generator, so devtools, clipboard and export all see the identical redacted structure.
 
 ## HTTP API
 
-`webapp/server.py` exposes a small JSON API; `GET /` serves the console.
-
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/health` | Liveness probe: engine id, rule count, rule source. |
-| `GET` | `/api/rules` | Active sink rules for the in-UI rule inspector. |
-| `POST` | `/api/scan` | Scan submitted sources, return the redacted findings payload. |
-| `POST` | `/api/report` | Scan and return the redacted JSON report as a download. |
-| `GET` | `/samples/<file>.py` | Known-vulnerable fixtures used for testing. |
-
-```bash
-curl -s -X POST http://127.0.0.1:8000/api/scan \
-  -H 'Content-Type: application/json' \
-  -d "{\"files\":[{\"path\":\"target.py\",\"content\":$(python -c 'import json;print(json.dumps(open("samples/vulnerable_target.py").read()))')}]}" \
-  | python -m json.tool | head -40
-```
-
-Payload shape:
+| `GET` | `/api/health` | Engine id, rule count, rule source. |
+| `GET` | `/api/rules` | Active sink rules for the inspector. |
+| `POST` | `/api/scan` | Scan documents, return the redacted payload. |
+| `POST` | `/api/report` | Scan and download the redacted JSON report. |
+| `GET` | `/api/assistant/status` | `local` or `llm`, model name, disclaimer. Never the key. |
+| `POST` | `/api/assistant` | Answer a question, optionally with a finding summary. |
+| `GET` | `/samples/<file>.py` | Bundled fixtures for testing. |
 
 ```json
-{
-  "files": [{ "path": "target.py", "content": "import os\nos.system(cmd)\n" }]
-}
+{ "files": [{ "path": "target.py", "content": "import os\nos.system(cmd)\n" }] }
 ```
 
-Response: `{"summary": {...severity_breakdown...}, "findings": [...], "meta": {...}}` where `meta` carries `engine`, `rules_loaded`, `rule_source`, `duration_ms`, `files_scanned`, `files_skipped`, `redacted`.
-
-Limits and validation: 25 files, 2 MB total, `.py` extension enforced, duplicate names suffixed, empty files rejected with `422`, oversized payloads with `413`.
+Response: `{"summary": {…}, "findings": […], "meta": {…}}` with `meta` carrying `engine`, `rules_loaded`, `rule_source`, `duration_ms`, `files_scanned`, `files_skipped`, `redacted`. Limits: 25 files, 2 MB total; `422` for empty payloads, `413` for oversized bodies, `403` for cross-origin writes, `429` when rate limited.
 
 ## Test target & expected results
 
-[`samples/vulnerable_target.py`](samples/vulnerable_target.py) is a self-documented fixture. It contains 7 sink call sites and 4 credentials, plus safe counterparts that must produce nothing. Result: **11 findings — 4 CRITICAL, 4 HIGH, 3 MEDIUM**.
+[`samples/vulnerable_target.py`](samples/vulnerable_target.py) documents its own expectations: 7 sink call sites, 4 credentials, and two safe counterparts that must stay silent. **11 findings — 4 CRITICAL, 4 HIGH, 3 MEDIUM.**
 
 | Severity | Line | Sink | Category |
 | --- | --- | --- | --- |
@@ -240,7 +272,17 @@ Limits and validation: 25 files, 2 MB total, `.py` extension enforced, duplicate
 | MEDIUM | 25 | `generic-credential` | SECRET |
 | MEDIUM | 66 | `os.system` | RCE |
 
-The safe counterparts at the bottom of the same file (list-form `subprocess.run` with `shell=False`, parameterised SQL) produce no findings — that is the false-positive check.
+The safe counterparts (`subprocess.run([...], shell=False)` and parameterised SQL) produce no findings — that is the false-positive check.
+
+## Configuration reference
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `REDTEAM_AI_KEY` / `ZAI_API_KEY` / `OPENAI_API_KEY` | unset | Enables LLM mode. Local knowledge base when absent. |
+| `REDTEAM_AI_BASE` | `https://api.z.ai/api/paas/v4` | OpenAI-compatible base URL. |
+| `REDTEAM_AI_MODEL` | `glm-4-flash` | Model name. |
+| `REDTEAM_FRAME_ANCESTORS` | `'self'` | CSP `frame-ancestors`; widen only for a trusted embedder. |
+| `REDTEAM_MAX_BODY_BYTES` | `2621440` | Request body cap enforced before buffering. |
 
 ## Project layout
 
@@ -250,31 +292,27 @@ redteam-linter/
 ├── reporter.py               # redaction boundary, Rich terminal report, JSON export
 ├── sinks.yaml                # declarative sink rules (7 baseline entries)
 ├── requirements.txt
-├── samples/
-│   └── vulnerable_target.py  # documented test fixture (expect 11 findings)
+├── samples/vulnerable_target.py
 ├── webapp/
-│   ├── engine.py             # AST sink matching, secret harvesting, taint heuristic
+│   ├── engine.py             # AST matching, secret harvesting, source excerpts
 │   ├── server.py             # FastAPI routes + redacted payload boundary
+│   ├── assistant.py          # local KB + optional OpenAI-compatible provider
+│   ├── security.py           # CSP, headers, origin guard, body cap, rate limits
 │   └── static/
-│       ├── index.html
-│       ├── styles.css
-│       └── app.js
+│       ├── index.html        # four-view shell
+│       ├── styles.css        # design tokens + components
+│       └── app.js            # router, findings, triage, assistant, notifications
 └── docs/
-    └── screenshot.png
+    ├── screenshot.png
+    └── screenshot-detail.png
 ```
-
-## Design constraints
-
-- **Never render raw secrets.** Not in the terminal, not in JSON, not in the browser. The only copy of a secret is the in-process finding.
-- **Redaction is output-side.** Harvesting and analysis keep original bytes so future data-flow work is not crippled by masking.
-- **`arguments_passed` stays structurally intact.** It is the taint-analysis bridge; keep it clean and JSON-serializable.
-- **Config over code.** New sink patterns go in `sinks.yaml`, validated and falling back safely.
-- **Python 3.9+, type hints, docstrings, modular.** Each layer importable and replaceable on its own.
-- **The console has no build step.** Plain HTML/CSS/JS served by FastAPI, so it runs anywhere Python runs.
 
 ## Limitations
 
-- **Heuristic taint, not proof.** `user_input_reachable` marks findings whose argument expression mentions request/argv/input-style identifiers. It is a triage signal, not a data-flow proof; cross-function flows are only visible through `arguments_passed`.
-- **Single-file, single-pass AST analysis.** No interprocedural analysis, no whole-project call graph, no CTF-style reachability.
-- **Secret detection is pattern-based.** Encoded, split, or generated secrets are missed; the generic-credential rule is intentionally conservative to keep noise low.
-- **No authentication on the web console.** It is a local review tool: bind it to `127.0.0.1`. Files submitted to it are scanned in memory and never written to disk.
+- **Heuristic taint, not proof.** `user_input_reachable` means the argument mentions a request/argv/input-style source directly or through a simple assignment. Cross-function flows exist only as `arguments_passed`.
+- **Single-file, single-pass AST analysis.** No interprocedural call graph, no reachability from entry points.
+- **Pattern-based secret detection.** Encoded, split or generated secrets are missed; the generic rule is conservative to keep noise low.
+- **Triage and notifications are browser-local.** They do not sync between browsers or machines, and clearing site data clears them.
+- **The assistant is advisory.** Local answers come from a curated catalogue; LLM answers depend on the provider, and both can be wrong. Verify against the code.
+- **Rate limits are per process.** Multiple workers each keep their own counters.
+- **No authentication.** Intended for loopback use; do not expose it to an untrusted network without a reverse proxy in front.

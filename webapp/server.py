@@ -38,7 +38,10 @@ from pydantic import BaseModel, Field
 
 from config_loader import DEFAULT_SINKS, load_sink_config
 from reporter import ReportGenerator
+from webapp.assistant import ask_assistant
+from webapp.assistant import assistant_status as assistant_mode
 from webapp.engine import scan_files
+from webapp.security import apply_security
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 LOGGER = logging.getLogger("redteam.web")
@@ -49,6 +52,9 @@ MAX_TOTAL_BYTES = 2 * 1024 * 1024
 STATIC_DIR = BASE_DIR / "static"
 
 app = FastAPI(title="RedTeam Linter", docs_url=None, redoc_url=None, openapi_url=None)
+
+# CSP, nosniff, origin guard, body cap and per-route rate limits.
+apply_security(app)
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +206,32 @@ def report(request: ScanRequest) -> Response:
     )
 
 
+class AssistantRequest(BaseModel):
+    """Question submitted to the in-app assistant."""
+
+    question: str = Field(default="", max_length=600)
+    finding: Optional[Dict[str, Any]] = None
+
+
+@app.get("/api/assistant/status")
+def assistant_status_route() -> Dict[str, Any]:
+    """Report which assistant backend is active (never exposes the API key)."""
+    return assistant_mode()
+
+
+@app.post("/api/assistant")
+def assistant(request: AssistantRequest) -> Dict[str, Any]:
+    """Answer a question about a finding or about using the linter.
+
+    Only whitelisted, already-redacted finding fields are forwarded to the
+    provider; the API key stays in this process.
+    """
+    question = (request.question or "").strip()
+    if not question:
+        raise HTTPException(status_code=422, detail="Ask a question first.")
+    return ask_assistant(question, request.finding)
+
+
 @app.get("/", response_class=HTMLResponse)
 def index() -> HTMLResponse:
     """Serve the console shell."""
@@ -220,4 +252,10 @@ app.mount("/", StaticFiles(directory=str(STATIC_DIR)), name="static")
 if __name__ == "__main__":  # pragma: no cover
     import uvicorn
 
-    uvicorn.run("webapp.server:app", host="0.0.0.0", port=8000, log_level="info")
+    uvicorn.run(
+        "webapp.server:app",
+        host="0.0.0.0",
+        port=8000,
+        log_level="info",
+        server_header=False,  # do not advertise the stack
+    )

@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from collections import Counter
 from copy import deepcopy
 from pathlib import Path
@@ -72,6 +73,47 @@ SENSITIVE_FIELDS: frozenset = frozenset({"matched_snippet", "secret_value"})
 
 #: Marker appended to truncated secrets.
 REDACTED_MARKER = "***REDACTED***"
+
+#: Second-layer patterns applied to free-form text (the source-viewer excerpt).
+#: The scan engine already masks credentials it recognised; these catch anything
+#: it did not, so the console can never render a live secret.
+_TEXT_SCRUB_PATTERNS = (
+    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*", re.IGNORECASE),
+    re.compile(
+        r"(?i)(?P<key>(?:api[_-]?key|secret|token|password|passwd|pwd)[A-Za-z0-9_]*\s*[=:]\s*)"
+        r"(?P<quote>['\"])(?P<value>[^'\"\s]{6,})(?P=quote)"
+    ),
+    re.compile(r"(?<![A-Za-z0-9_])[A-Za-z0-9_+/=-]{32,}(?![A-Za-z0-9_])"),
+)
+
+
+def _scrub_text(text: str) -> str:
+    """Mask credential-shaped content in free-form text.
+
+    Used for the source-viewer excerpt, which is built from target bytes rather
+    than from ``matched_snippet``.  It is deliberately conservative: it only
+    touches things that look like key material, so surrounding code stays
+    readable.
+    """
+    if not isinstance(text, str) or not text:
+        return ""
+    scrubbed = text
+    for pattern in _TEXT_SCRUB_PATTERNS:
+        if pattern.groups >= 2:
+            def replace(match: "re.Match[str]") -> str:
+                value = match.group("value")
+                if value.startswith("<") or "REDACTED" in value.upper():
+                    return match.group(0)
+                return "{key}{quote}{marker}{quote}".format(
+                    key=match.group("key"),
+                    quote=match.group("quote"),
+                    marker=REDACTED_MARKER,
+                )
+
+            scrubbed = pattern.sub(replace, scrubbed)
+        else:
+            scrubbed = pattern.sub(REDACTED_MARKER, scrubbed)
+    return scrubbed
 
 #: Strings longer than this are considered potential secrets and truncated.
 REDACT_LENGTH_THRESHOLD = 10
@@ -241,6 +283,14 @@ class ReportGenerator:
                 elif key in SENSITIVE_FIELDS and value is not None:
                     # Lists/objects in a sensitive slot: stringify then scrub.
                     clean[key] = self._redact_secret(str(value))
+                elif key == "source_context" and isinstance(value, (list, tuple)):
+                    # The source viewer gets a second scrub pass over raw bytes.
+                    clean[key] = [
+                        {**entry, "text": _scrub_text(entry.get("text", ""))}
+                        if isinstance(entry, Mapping)
+                        else entry
+                        for entry in value
+                    ]
                 else:
                     clean[key] = self._redact_payload(value)
             return clean
