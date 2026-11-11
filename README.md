@@ -335,7 +335,7 @@ redteam-linter/
 │       │   ├── tooltip.css
 │       │   └── tooltip.js
 │       ├── favicon.svg       # wordmark
-│       ├── manifest.webmanifest
+│       ├── manifest.json
 │       ├── robots.txt
 │       └── img/console.png   # console screenshot used by the landing page
 └── docs/
